@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mask</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Fullscreen background mask videos (hidden — thermal canvas renders them) -->
+  <div id="video-container">
+    <video id="mask1" class="mask-video active" src="assets/videos/mask_1.mp4" preload="auto" muted playsinline></video>
+    <video id="mask2" class="mask-video" src="assets/videos/mask_2.mp4" preload="auto" muted playsinline></video>
+    <video id="mask3" class="mask-video" src="assets/videos/mask_3.mp4" preload="auto" muted playsinline></video>
+  </div>
+
+  <!-- Webcam preview bottom-left -->
+  <div id="webcam-container">
+    <canvas id="webcam-canvas"></canvas>
+    <div id="detection-indicator"></div>
+  </div>
+
+  <!-- Status log — right side, chat style -->
+  <div id="status-log"></div>
+
+  <!-- p5.js + ml5.js via CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+  <script src="https://unpkg.com/ml5@1/dist/ml5.min.js"></script>
+  <script src="sketch.js"></script>
+</body>
+</html>
