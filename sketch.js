@@ -220,9 +220,19 @@ function drawDetectionOverlay() {
 
   if (!poses.length) return;
 
-  // ml5 returns keypoints in CSS pixel space (WEBCAM_W × WEBCAM_H)
-  const scaleX = W / WEBCAM_W;
-  const scaleY = H / WEBCAM_H;
+  // iOS may deliver a landscape stream (videoWidth > videoHeight) even in portrait.
+  // ml5 processes raw pixels → keypoints are in landscape space.
+  // Fix: swap axes and remap to portrait screen coordinates.
+  const srcW    = (capture && capture.elt.videoWidth)  || WEBCAM_W;
+  const srcH    = (capture && capture.elt.videoHeight) || WEBCAM_H;
+  const needSwap = (srcW > srcH) && (W < H);
+
+  const scaleX = needSwap ? W / srcH : W / WEBCAM_W;
+  const scaleY = needSwap ? H / srcW : H / WEBCAM_H;
+  // In swap mode: landscape_y → portrait_x, (srcW - landscape_x) → portrait_y
+  // (srcW - k.x) undoes ml5's flipped:true to recover sensor_x for the portrait y-axis
+  const toSX = needSwap ? k => k.y * scaleX          : k => k.x * scaleX;
+  const toSY = needSwap ? k => (srcW - k.x) * scaleY : k => k.y * scaleY;
 
   // ── Observer list — top left ──────────────────────────────────────────────
   const PILL_H    = 24;
@@ -299,8 +309,8 @@ function drawDetectionOverlay() {
 
       if (facePts.length >= 2) {
         // Use face keypoints
-        const xs = facePts.map(k => k.x * scaleX);
-        const ys = facePts.map(k => k.y * scaleY);
+        const xs = facePts.map(toSX);
+        const ys = facePts.map(toSY);
         const x1 = Math.min(...xs), x2 = Math.max(...xs);
         const y1 = Math.min(...ys), y2 = Math.max(...ys);
         const padX = Math.max((x2 - x1) * 0.25, MIN_BOX * 0.2);
@@ -318,12 +328,12 @@ function drawDetectionOverlay() {
 
         let midX, midY, boxW;
         if (ls && rs) {
-          midX  = ((ls.x + rs.x) / 2) * scaleX;
-          midY  = ((ls.y + rs.y) / 2) * scaleY;
-          boxW  = Math.max(Math.abs(rs.x - ls.x) * scaleX * 1.1, MIN_BOX);
+          midX  = (toSX(ls) + toSX(rs)) / 2;
+          midY  = (toSY(ls) + toSY(rs)) / 2;
+          boxW  = Math.max(Math.abs(toSX(rs) - toSX(ls)) * 1.1, MIN_BOX);
         } else if (nose) {
-          midX  = nose.x * scaleX;
-          midY  = nose.y * scaleY;
+          midX  = toSX(nose);
+          midY  = toSY(nose);
           boxW  = MIN_BOX;
         } else {
           return;
