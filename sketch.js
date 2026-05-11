@@ -200,8 +200,9 @@ function drawWebcamPreview() {
 }
 
 // ─── Detection overlay — HUD design ──────────────────────────────────────────
-const FACE_KPS = ['nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear'];
-const BRACKET  = 18;  // L-bracket arm length
+const FACE_KPS  = ['nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear'];
+const UPPER_KPS = ['nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear', 'left_shoulder', 'right_shoulder'];
+const BRACKET   = 18;
 const BRACKET_W = 1.5;
 
 function drawDetectionOverlay() {
@@ -238,11 +239,10 @@ function drawDetectionOverlay() {
   detectionCtx.font         = '400 11px apotek, -apple-system, sans-serif';
 
   poses.forEach((pose, i) => {
-    const pts = pose.keypoints.filter(k => FACE_KPS.includes(k.name) && k.confidence > 0.1);
-
-    // Confidence: average of available face keypoints (or 0 if none)
-    const conf = pts.length
-      ? pts.reduce((s, k) => s + k.confidence, 0) / pts.length
+    // Face keypoints for confidence display (low threshold)
+    const facePts = pose.keypoints.filter(k => FACE_KPS.includes(k.name) && k.confidence > 0.05);
+    const conf = facePts.length
+      ? facePts.reduce((s, k) => s + k.confidence, 0) / facePts.length
       : 0;
     const confPct = Math.round(conf * 100);
 
@@ -293,20 +293,46 @@ function drawDetectionOverlay() {
     detectionCtx.font         = '400 11px apotek, -apple-system, sans-serif';
 
     // ── L-bracket corners around face box ──────────────────────────────────
-    if (pts.length >= 2) {
-      const xs = pts.map(k => k.x * scaleX);
-      const ys = pts.map(k => k.y * scaleY);
-      const x1 = Math.min(...xs);
-      const y1 = Math.min(...ys);
-      const x2 = Math.max(...xs);
-      const y2 = Math.max(...ys);
+    {
+      let bx, by, bw, bh;
+      const MIN_BOX = Math.min(W, H) * 0.22;  // minimum box size
 
-      const padX = (x2 - x1) * 0.25;
-      const padY = (y2 - y1) * 0.65;
-      const bx = x1 - padX;
-      const by = y1 - padY;
-      const bw = (x2 - x1) + padX * 2;
-      const bh = (y2 - y1) + padY * 2;
+      if (facePts.length >= 2) {
+        // Use face keypoints
+        const xs = facePts.map(k => k.x * scaleX);
+        const ys = facePts.map(k => k.y * scaleY);
+        const x1 = Math.min(...xs), x2 = Math.max(...xs);
+        const y1 = Math.min(...ys), y2 = Math.max(...ys);
+        const padX = Math.max((x2 - x1) * 0.25, MIN_BOX * 0.2);
+        const padY = Math.max((y2 - y1) * 0.65, MIN_BOX * 0.4);
+        bx = x1 - padX;
+        by = y1 - padY;
+        bw = Math.max((x2 - x1) + padX * 2, MIN_BOX);
+        bh = Math.max((y2 - y1) + padY * 2, MIN_BOX * 1.2);
+      } else {
+        // Fallback: estimate head position from shoulders
+        const ls = pose.keypoints.find(k => k.name === 'left_shoulder'  && k.confidence > 0.1);
+        const rs = pose.keypoints.find(k => k.name === 'right_shoulder' && k.confidence > 0.1);
+        const nose = pose.keypoints.find(k => k.name === 'nose' && k.confidence > 0.03);
+        if (!ls && !rs && !nose) return;
+
+        let midX, midY, boxW;
+        if (ls && rs) {
+          midX  = ((ls.x + rs.x) / 2) * scaleX;
+          midY  = ((ls.y + rs.y) / 2) * scaleY;
+          boxW  = Math.max(Math.abs(rs.x - ls.x) * scaleX * 1.1, MIN_BOX);
+        } else if (nose) {
+          midX  = nose.x * scaleX;
+          midY  = nose.y * scaleY;
+          boxW  = MIN_BOX;
+        } else {
+          return;
+        }
+        bw = boxW;
+        bh = boxW * 1.3;
+        bx = midX - bw / 2;
+        by = (ls && rs) ? midY - bh * 1.5 : midY - bh * 0.4;
+      }
 
       detectionCtx.strokeStyle = 'rgba(255,255,255,0.7)';
       detectionCtx.lineWidth   = BRACKET_W;
