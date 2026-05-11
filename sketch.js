@@ -64,7 +64,7 @@ new p5(function (p) {
 
     applyCanvasSize();
 
-    capture = p.createCapture(p.VIDEO, { flipped: true });
+    capture = p.createCapture({ video: { facingMode: 'user' } });
     capture.size(WEBCAM_W, WEBCAM_H);
     capture.hide();
 
@@ -117,14 +117,7 @@ function updateBottomBar(count) {
   const leftEl  = document.getElementById('bottom-left');
   const rightEl = document.getElementById('bottom-right');
 
-  if (count === 0) {
-    leftEl.textContent = '—';
-  } else {
-    leftEl.innerHTML = Array.from({ length: count }, (_, i) =>
-      `<span>Observer ${i + 1}</span>`
-    ).join('');
-  }
-
+  leftEl.textContent = count === 0 ? 'Observer (0)' : `Observer (${count})`;
   rightEl.textContent = OBSERVER_MESSAGES[Math.min(count, 3)] ?? '';
 }
 
@@ -200,64 +193,146 @@ function drawWebcamPreview() {
   webcamCtx.putImageData(id, 0, 0);
 }
 
-// ─── Detection overlay — bounding boxes + labels ─────────────────────────────
+// ─── Detection overlay — HUD design ──────────────────────────────────────────
 const FACE_KPS = ['nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear'];
+const BRACKET  = 18;  // L-bracket arm length
+const BRACKET_W = 1.5;
 
 function drawDetectionOverlay() {
   const W = detectionCanvas.width;
   const H = detectionCanvas.height;
   detectionCtx.clearRect(0, 0, W, H);
+
+  // ── Large mask number — top right ────────────────────────────────────────
+  const maskLabel = String(currentMaskIndex + 1).padStart(2, '0');
+  detectionCtx.font = '400 96px apotek, serif';
+  detectionCtx.fillStyle = 'rgba(255,255,255,0.18)';
+  detectionCtx.textAlign = 'right';
+  detectionCtx.textBaseline = 'top';
+  detectionCtx.fillText(maskLabel, W - 28, 20);
+
   if (!poses.length) return;
 
   const scaleX = W / WEBCAM_W;
   const scaleY = H / WEBCAM_H;
 
+  // ── Observer list — top left ──────────────────────────────────────────────
+  const PILL_H    = 24;
+  const PILL_PAD  = 10;
+  const LINE_MAX  = 120;
+  const LINE_GAP  = 12;   // gap between pill and line
+  const ARROWHEAD = 6;
+  const ROW_GAP   = 10;
+  const START_X   = 24;
+  const START_Y   = 24;
+
+  detectionCtx.textAlign    = 'left';
+  detectionCtx.textBaseline = 'middle';
+  detectionCtx.font         = '400 11px apotek, -apple-system, sans-serif';
+
   poses.forEach((pose, i) => {
-    const pts = pose.keypoints.filter(k => FACE_KPS.includes(k.name) && k.confidence > 0.25);
-    if (pts.length < 2) return;
+    const pts = pose.keypoints.filter(k => FACE_KPS.includes(k.name) && k.confidence > 0.1);
 
-    const xs = pts.map(k => k.x * scaleX);
-    const ys = pts.map(k => k.y * scaleY);
-    const x1 = Math.min(...xs);
-    const y1 = Math.min(...ys);
-    const x2 = Math.max(...xs);
-    const y2 = Math.max(...ys);
+    // Confidence: average of available face keypoints (or 0 if none)
+    const conf = pts.length
+      ? pts.reduce((s, k) => s + k.confidence, 0) / pts.length
+      : 0;
+    const confPct = Math.round(conf * 100);
 
-    // Expand box around face
-    const padX = (x2 - x1) * 0.2;
-    const padY = (y2 - y1) * 0.6;
-    const rx = x1 - padX;
-    const ry = y1 - padY;
-    const rw = (x2 - x1) + padX * 2;
-    const rh = (y2 - y1) + padY * 2;
+    const row_y = START_Y + i * (PILL_H + ROW_GAP) + PILL_H / 2;
 
-    // Box — iOS style rounded rect
-    detectionCtx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+    // Pill background
+    const label  = `Observer ${i + 1}`;
+    const tw     = detectionCtx.measureText(label).width;
+    const pill_w = tw + PILL_PAD * 2;
+
+    detectionCtx.fillStyle = 'rgba(30,30,30,0.72)';
+    detectionCtx.strokeStyle = 'rgba(255,255,255,0.14)';
     detectionCtx.lineWidth = 1;
     detectionCtx.beginPath();
-    detectionCtx.roundRect(rx, ry, rw, rh, 10);
-    detectionCtx.stroke();
-
-    // Label pill
-    const label = `Observer ${i + 1}`;
-    detectionCtx.font = '500 12px -apple-system, BlinkMacSystemFont, sans-serif';
-    const tw = detectionCtx.measureText(label).width;
-    const lw = tw + 20;
-    const lh = 26;
-    const lx = rx;
-    const ly = ry - lh - 6;
-
-    detectionCtx.fillStyle = 'rgba(30, 30, 30, 0.7)';
-    detectionCtx.beginPath();
-    detectionCtx.roundRect(lx, ly, lw, lh, 8);
+    detectionCtx.roundRect(START_X, row_y - PILL_H / 2, pill_w, PILL_H, 6);
     detectionCtx.fill();
-
-    detectionCtx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-    detectionCtx.lineWidth = 1;
     detectionCtx.stroke();
 
-    detectionCtx.fillStyle = '#ffffff';
-    detectionCtx.fillText(label, lx + 10, ly + 17);
+    // Pill text
+    detectionCtx.fillStyle = '#fff';
+    detectionCtx.fillText(label, START_X + PILL_PAD, row_y);
+
+    // Confidence line — scaled to confPct
+    const lineStart = START_X + pill_w + LINE_GAP;
+    const lineLen   = Math.round((confPct / 100) * LINE_MAX);
+    const lineEnd   = lineStart + lineLen;
+
+    detectionCtx.strokeStyle = 'rgba(255,255,255,0.5)';
+    detectionCtx.lineWidth   = 1.5;
+    detectionCtx.beginPath();
+    detectionCtx.moveTo(lineStart, row_y);
+    detectionCtx.lineTo(lineEnd,  row_y);
+    detectionCtx.stroke();
+
+    // Arrowhead
+    detectionCtx.strokeStyle = 'rgba(255,255,255,0.5)';
+    detectionCtx.lineWidth   = 1.5;
+    detectionCtx.beginPath();
+    detectionCtx.moveTo(lineEnd - ARROWHEAD, row_y - ARROWHEAD / 2);
+    detectionCtx.lineTo(lineEnd, row_y);
+    detectionCtx.lineTo(lineEnd - ARROWHEAD, row_y + ARROWHEAD / 2);
+    detectionCtx.stroke();
+
+    // Percentage text
+    detectionCtx.fillStyle    = 'rgba(255,255,255,0.55)';
+    detectionCtx.font         = '400 10px apotek, -apple-system, sans-serif';
+    detectionCtx.fillText(`${confPct} %`, lineEnd + 8, row_y);
+    detectionCtx.font         = '400 11px apotek, -apple-system, sans-serif';
+
+    // ── L-bracket corners around face box ──────────────────────────────────
+    if (pts.length >= 2) {
+      const xs = pts.map(k => k.x * scaleX);
+      const ys = pts.map(k => k.y * scaleY);
+      const x1 = Math.min(...xs);
+      const y1 = Math.min(...ys);
+      const x2 = Math.max(...xs);
+      const y2 = Math.max(...ys);
+
+      const padX = (x2 - x1) * 0.25;
+      const padY = (y2 - y1) * 0.65;
+      const bx = x1 - padX;
+      const by = y1 - padY;
+      const bw = (x2 - x1) + padX * 2;
+      const bh = (y2 - y1) + padY * 2;
+
+      detectionCtx.strokeStyle = 'rgba(255,255,255,0.7)';
+      detectionCtx.lineWidth   = BRACKET_W;
+      detectionCtx.lineCap     = 'square';
+
+      // top-left
+      detectionCtx.beginPath();
+      detectionCtx.moveTo(bx,            by + BRACKET);
+      detectionCtx.lineTo(bx,            by);
+      detectionCtx.lineTo(bx + BRACKET,  by);
+      detectionCtx.stroke();
+
+      // top-right
+      detectionCtx.beginPath();
+      detectionCtx.moveTo(bx + bw - BRACKET, by);
+      detectionCtx.lineTo(bx + bw,           by);
+      detectionCtx.lineTo(bx + bw,           by + BRACKET);
+      detectionCtx.stroke();
+
+      // bottom-right
+      detectionCtx.beginPath();
+      detectionCtx.moveTo(bx + bw,           by + bh - BRACKET);
+      detectionCtx.lineTo(bx + bw,           by + bh);
+      detectionCtx.lineTo(bx + bw - BRACKET, by + bh);
+      detectionCtx.stroke();
+
+      // bottom-left
+      detectionCtx.beginPath();
+      detectionCtx.moveTo(bx + BRACKET, by + bh);
+      detectionCtx.lineTo(bx,           by + bh);
+      detectionCtx.lineTo(bx,           by + bh - BRACKET);
+      detectionCtx.stroke();
+    }
   });
 }
 
