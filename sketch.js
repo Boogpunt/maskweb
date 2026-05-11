@@ -248,7 +248,7 @@ function drawDetectionOverlay() {
   const NUM_X     = PAD + 6;
   const NUM_Y     = PAD + 2;
   const maskLabel = String(currentMaskIndex + 1).padStart(2, '0');
-  detectionCtx.font         = `200 ${NUM_SIZE}px apotek, sans-serif`;
+  detectionCtx.font         = `400 ${NUM_SIZE}px 'Chakra Petch', sans-serif`;
   detectionCtx.fillStyle    = 'rgba(255,255,255,0.9)';
   detectionCtx.textAlign    = 'left';
   detectionCtx.textBaseline = 'top';
@@ -274,7 +274,7 @@ function drawDetectionOverlay() {
       const row_y  = OBS_Y + i * (PILL_H + ROW_GAP) + PILL_H / 2;
       const label  = `Observer ${i + 1}`;
 
-      detectionCtx.font = `200 18px apotek, sans-serif`;
+      detectionCtx.font = `400 18px 'Chakra Petch', sans-serif`;
       const pill_w = detectionCtx.measureText(label).width + PILL_PAD * 2;
 
       // Pill (outline only)
@@ -302,7 +302,7 @@ function drawDetectionOverlay() {
 
       // Percentage
       detectionCtx.fillStyle = 'rgba(255,255,255,0.6)';
-      detectionCtx.font      = `200 16px apotek, sans-serif`;
+      detectionCtx.font      = `400 16px 'Chakra Petch', sans-serif`;
       detectionCtx.fillText(String(pct).padStart(2, '0') + ' %', lx1 + 11, row_y);
     });
   }
@@ -326,7 +326,7 @@ function drawDetectionOverlay() {
       const bot  = LOG_BOT - age * (ENTRY_H + ENTRY_GAP);
 
       detectionCtx.fillStyle = `rgba(255,255,255,${op})`;
-      detectionCtx.font      = `200 18px apotek, sans-serif`;
+      detectionCtx.font      = `400 18px 'Chakra Petch', sans-serif`;
       detectionCtx.fillText(`- ${e.desc}`, LOG_X + 10, bot);
       detectionCtx.fillText(`${e.num}  ${e.heading}`, LOG_X, bot - LINE_H - 4);
     }

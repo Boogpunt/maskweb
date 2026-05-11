@@ -1,3 +1,10 @@
+@font-face {
+  font-family: 'Chakra Petch';
+  src: url('assets/Chakra_Petch/ChakraPetch-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
 * {
   margin: 0;
   padding: 0;
