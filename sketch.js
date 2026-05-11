@@ -15,6 +15,7 @@ let poses = [];
 let currentMaskIndex  = 0;
 let maskIsPlaying     = false;
 let prevObserverCount = -1;    // triggers next video when observer count changes
+let textLog           = [];    // accumulated message log (newest last)
 
 const maskVideos = [
   document.getElementById('mask1'),
@@ -105,6 +106,12 @@ const OBSERVER_MESSAGES = {
   3: "When i'm with my client",
 };
 
+const MASK_TEXTS = [
+  { heading: "When I'm with my close friend",            desc: "I can show my negative aspects to them. Keep blaming world." },
+  { heading: "When I'm with my business client",         desc: "I try to show me as a professional person. Be smart, act like a person who have a vision." },
+  { heading: "When I'm surrounded with lots of people",  desc: "I have to show me as a positive person. Keep listening what people said and let them do it" },
+];
+
 function onPoses(results) {
   poses = results;
   const count = poses.length;
@@ -149,6 +156,7 @@ function tryAdvanceMask() {
     showMask(currentMaskIndex);
     v.play().catch(() => {});
     setStatus(`Playing mask ${currentMaskIndex + 1}`);
+    addTextLogEntry(currentMaskIndex);
   };
 
   if (v.currentTime === 0) {
@@ -157,6 +165,12 @@ function tryAdvanceMask() {
     v.addEventListener('seeked', startPlay, { once: true });
     v.currentTime = 0;
   }
+}
+
+function addTextLogEntry(maskIndex) {
+  const t = MASK_TEXTS[maskIndex % MASK_TEXTS.length];
+  textLog.push({ num: String(textLog.length + 1).padStart(2, '0'), heading: t.heading, desc: t.desc });
+  if (textLog.length > 5) textLog = textLog.slice(-5);
 }
 
 // ─── Webcam preview draw — grayscale invert + vignette ───────────────────────
@@ -200,182 +214,173 @@ function drawWebcamPreview() {
 }
 
 // ─── Detection overlay — HUD design ──────────────────────────────────────────
-const FACE_KPS  = ['nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear'];
-const UPPER_KPS = ['nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear', 'left_shoulder', 'right_shoulder'];
-const BRACKET   = 18;
+const FACE_KPS = ['nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear'];
 const BRACKET_W = 1.5;
 
+function lb(x, y, dx, dy, arm) {
+  detectionCtx.beginPath();
+  detectionCtx.moveTo(x + dx * arm, y);
+  detectionCtx.lineTo(x, y);
+  detectionCtx.lineTo(x, y + dy * arm);
+  detectionCtx.stroke();
+}
+
 function drawDetectionOverlay() {
-  const W = window.innerWidth;
-  const H = window.innerHeight;
+  const W   = window.innerWidth;
+  const H   = window.innerHeight;
+  const PAD = 24;
+  const ARM_SCREEN = 28;
+  const ARM_FACE   = 20;
   detectionCtx.clearRect(0, 0, W, H);
 
-  // ── Large mask number — top right ────────────────────────────────────────
-  const maskLabel = String(currentMaskIndex + 1).padStart(2, '0');
-  detectionCtx.font = '400 96px apotek, serif';
-  detectionCtx.fillStyle = 'rgba(255,255,255,0.18)';
-  detectionCtx.textAlign = 'right';
-  detectionCtx.textBaseline = 'top';
-  detectionCtx.fillText(maskLabel, W - 28, 20);
+  // ── Screen-corner L-brackets (always visible) ────────────────────────────
+  detectionCtx.strokeStyle = 'rgba(255,255,255,0.55)';
+  detectionCtx.lineWidth   = 1.5;
+  detectionCtx.lineCap     = 'square';
+  lb(PAD,   PAD,    1,  1, ARM_SCREEN);
+  lb(W-PAD, PAD,   -1,  1, ARM_SCREEN);
+  lb(W-PAD, H-PAD, -1, -1, ARM_SCREEN);
+  lb(PAD,   H-PAD,  1, -1, ARM_SCREEN);
 
+  // ── Mask number — top left ────────────────────────────────────────────────
+  const NUM_SIZE  = 88;
+  const NUM_X     = PAD + 6;
+  const NUM_Y     = PAD + 2;
+  const maskLabel = String(currentMaskIndex + 1).padStart(2, '0');
+  detectionCtx.font         = `200 ${NUM_SIZE}px apotek, sans-serif`;
+  detectionCtx.fillStyle    = 'rgba(255,255,255,0.9)';
+  detectionCtx.textAlign    = 'left';
+  detectionCtx.textBaseline = 'top';
+  detectionCtx.fillText(maskLabel, NUM_X, NUM_Y);
+  const numW = detectionCtx.measureText(maskLabel).width;
+
+  // ── Observer list — right of number ──────────────────────────────────────
+  if (poses.length > 0) {
+    const OBS_X    = NUM_X + numW + 16;
+    const OBS_Y    = NUM_Y + 8;
+    const PILL_H   = 22;
+    const ROW_GAP  = 7;
+    const PILL_PAD = 8;
+    const LINE_MAX = Math.min(160, W - OBS_X - 55);
+    const ARR      = 5;
+
+    detectionCtx.textBaseline = 'middle';
+
+    poses.forEach((pose, i) => {
+      const fpts   = pose.keypoints.filter(k => FACE_KPS.includes(k.name) && k.confidence > 0.05);
+      const conf   = fpts.length ? fpts.reduce((s, k) => s + k.confidence, 0) / fpts.length : 0;
+      const pct    = Math.round(conf * 100);
+      const row_y  = OBS_Y + i * (PILL_H + ROW_GAP) + PILL_H / 2;
+      const label  = `Observer ${i + 1}`;
+
+      detectionCtx.font = `200 11px apotek, sans-serif`;
+      const pill_w = detectionCtx.measureText(label).width + PILL_PAD * 2;
+
+      // Pill (outline only)
+      detectionCtx.strokeStyle = 'rgba(255,255,255,0.65)';
+      detectionCtx.lineWidth   = 1;
+      detectionCtx.beginPath();
+      detectionCtx.roundRect(OBS_X, row_y - PILL_H / 2, pill_w, PILL_H, 4);
+      detectionCtx.stroke();
+
+      detectionCtx.fillStyle = 'rgba(255,255,255,0.9)';
+      detectionCtx.textAlign = 'left';
+      detectionCtx.fillText(label, OBS_X + PILL_PAD, row_y);
+
+      // Confidence line + arrowhead
+      const lx0 = OBS_X + pill_w + 9;
+      const lx1 = lx0 + Math.round((pct / 100) * LINE_MAX);
+      detectionCtx.strokeStyle = 'rgba(255,255,255,0.65)';
+      detectionCtx.lineWidth   = 1.5;
+      detectionCtx.beginPath(); detectionCtx.moveTo(lx0, row_y); detectionCtx.lineTo(lx1, row_y); detectionCtx.stroke();
+      detectionCtx.beginPath();
+      detectionCtx.moveTo(lx1 - ARR, row_y - ARR / 2);
+      detectionCtx.lineTo(lx1, row_y);
+      detectionCtx.lineTo(lx1 - ARR, row_y + ARR / 2);
+      detectionCtx.stroke();
+
+      // Percentage
+      detectionCtx.fillStyle = 'rgba(255,255,255,0.6)';
+      detectionCtx.font      = `200 10px apotek, sans-serif`;
+      detectionCtx.fillText(String(pct).padStart(2, '0') + ' %', lx1 + 7, row_y);
+    });
+  }
+
+  // ── Bottom-left text log ──────────────────────────────────────────────────
+  if (textLog.length > 0) {
+    const LOG_X      = PAD + 6;
+    const LOG_BOT    = H - PAD - 6;
+    const LINE_H     = 15;
+    const ENTRY_H    = LINE_H * 2 + 3;
+    const ENTRY_GAP  = 10;
+    const OPACITIES  = [1.0, 0.42, 0.18, 0.08, 0.04];
+
+    detectionCtx.textAlign    = 'left';
+    detectionCtx.textBaseline = 'bottom';
+
+    const n = textLog.length;
+    for (let age = 0; age < n; age++) {
+      const e    = textLog[n - 1 - age];
+      const op   = OPACITIES[age] ?? 0.03;
+      const bot  = LOG_BOT - age * (ENTRY_H + ENTRY_GAP);
+
+      detectionCtx.fillStyle = `rgba(255,255,255,${op})`;
+      detectionCtx.font      = `200 11px apotek, sans-serif`;
+      detectionCtx.fillText(`- ${e.desc}`, LOG_X + 10, bot);
+      detectionCtx.fillText(`${e.num}  ${e.heading}`, LOG_X, bot - LINE_H - 2);
+    }
+  }
+
+  // ── Face detection L-brackets ─────────────────────────────────────────────
   if (!poses.length) return;
 
-  // iOS may deliver a landscape stream (videoWidth > videoHeight) even in portrait.
-  // ml5 processes raw pixels → keypoints are in landscape space.
-  // Fix: swap axes and remap to portrait screen coordinates.
   const srcW    = (capture && capture.elt.videoWidth)  || WEBCAM_W;
   const srcH    = (capture && capture.elt.videoHeight) || WEBCAM_H;
   const needSwap = (srcW > srcH) && (W < H);
+  const scaleX  = needSwap ? W / srcH : W / WEBCAM_W;
+  const scaleY  = needSwap ? H / srcW : H / WEBCAM_H;
+  const toSX    = needSwap ? k => k.y * scaleX          : k => k.x * scaleX;
+  const toSY    = needSwap ? k => (srcW - k.x) * scaleY : k => k.y * scaleY;
 
-  const scaleX = needSwap ? W / srcH : W / WEBCAM_W;
-  const scaleY = needSwap ? H / srcW : H / WEBCAM_H;
-  // In swap mode: landscape_y → portrait_x, (srcW - landscape_x) → portrait_y
-  // (srcW - k.x) undoes ml5's flipped:true to recover sensor_x for the portrait y-axis
-  const toSX = needSwap ? k => k.y * scaleX          : k => k.x * scaleX;
-  const toSY = needSwap ? k => (srcW - k.x) * scaleY : k => k.y * scaleY;
+  detectionCtx.strokeStyle = 'rgba(255,255,255,0.7)';
+  detectionCtx.lineWidth   = BRACKET_W;
+  detectionCtx.lineCap     = 'square';
 
-  // ── Observer list — top left ──────────────────────────────────────────────
-  const PILL_H    = 24;
-  const PILL_PAD  = 10;
-  const LINE_MAX  = 120;
-  const LINE_GAP  = 12;   // gap between pill and line
-  const ARROWHEAD = 6;
-  const ROW_GAP   = 10;
-  const START_X   = 24;
-  const START_Y   = 24;
+  poses.forEach(pose => {
+    const fpts = pose.keypoints.filter(k => FACE_KPS.includes(k.name) && k.confidence > 0.05);
+    const MIN_BOX = Math.min(W, H) * 0.22;
+    let bx, by, bw, bh;
 
-  detectionCtx.textAlign    = 'left';
-  detectionCtx.textBaseline = 'middle';
-  detectionCtx.font         = '400 11px apotek, -apple-system, sans-serif';
-
-  poses.forEach((pose, i) => {
-    // Face keypoints for confidence display (low threshold)
-    const facePts = pose.keypoints.filter(k => FACE_KPS.includes(k.name) && k.confidence > 0.05);
-    const conf = facePts.length
-      ? facePts.reduce((s, k) => s + k.confidence, 0) / facePts.length
-      : 0;
-    const confPct = Math.round(conf * 100);
-
-    const row_y = START_Y + i * (PILL_H + ROW_GAP) + PILL_H / 2;
-
-    // Pill background
-    const label  = `Observer ${i + 1}`;
-    const tw     = detectionCtx.measureText(label).width;
-    const pill_w = tw + PILL_PAD * 2;
-
-    detectionCtx.fillStyle = 'rgba(30,30,30,0.72)';
-    detectionCtx.strokeStyle = 'rgba(255,255,255,0.14)';
-    detectionCtx.lineWidth = 1;
-    detectionCtx.beginPath();
-    detectionCtx.roundRect(START_X, row_y - PILL_H / 2, pill_w, PILL_H, 6);
-    detectionCtx.fill();
-    detectionCtx.stroke();
-
-    // Pill text
-    detectionCtx.fillStyle = '#fff';
-    detectionCtx.fillText(label, START_X + PILL_PAD, row_y);
-
-    // Confidence line — scaled to confPct
-    const lineStart = START_X + pill_w + LINE_GAP;
-    const lineLen   = Math.round((confPct / 100) * LINE_MAX);
-    const lineEnd   = lineStart + lineLen;
-
-    detectionCtx.strokeStyle = 'rgba(255,255,255,0.5)';
-    detectionCtx.lineWidth   = 1.5;
-    detectionCtx.beginPath();
-    detectionCtx.moveTo(lineStart, row_y);
-    detectionCtx.lineTo(lineEnd,  row_y);
-    detectionCtx.stroke();
-
-    // Arrowhead
-    detectionCtx.strokeStyle = 'rgba(255,255,255,0.5)';
-    detectionCtx.lineWidth   = 1.5;
-    detectionCtx.beginPath();
-    detectionCtx.moveTo(lineEnd - ARROWHEAD, row_y - ARROWHEAD / 2);
-    detectionCtx.lineTo(lineEnd, row_y);
-    detectionCtx.lineTo(lineEnd - ARROWHEAD, row_y + ARROWHEAD / 2);
-    detectionCtx.stroke();
-
-    // Percentage text
-    detectionCtx.fillStyle    = 'rgba(255,255,255,0.55)';
-    detectionCtx.font         = '400 10px apotek, -apple-system, sans-serif';
-    detectionCtx.fillText(`${confPct} %`, lineEnd + 8, row_y);
-    detectionCtx.font         = '400 11px apotek, -apple-system, sans-serif';
-
-    // ── L-bracket corners around face box ──────────────────────────────────
-    {
-      let bx, by, bw, bh;
-      const MIN_BOX = Math.min(W, H) * 0.22;  // minimum box size
-
-      if (facePts.length >= 2) {
-        // Use face keypoints
-        const xs = facePts.map(toSX);
-        const ys = facePts.map(toSY);
-        const x1 = Math.min(...xs), x2 = Math.max(...xs);
-        const y1 = Math.min(...ys), y2 = Math.max(...ys);
-        const padX = Math.max((x2 - x1) * 0.25, MIN_BOX * 0.2);
-        const padY = Math.max((y2 - y1) * 0.65, MIN_BOX * 0.4);
-        bx = x1 - padX;
-        by = y1 - padY;
-        bw = Math.max((x2 - x1) + padX * 2, MIN_BOX);
-        bh = Math.max((y2 - y1) + padY * 2, MIN_BOX * 1.2);
+    if (fpts.length >= 2) {
+      const xs = fpts.map(toSX), ys = fpts.map(toSY);
+      const x1 = Math.min(...xs), x2 = Math.max(...xs);
+      const y1 = Math.min(...ys), y2 = Math.max(...ys);
+      const px = Math.max((x2 - x1) * 0.25, MIN_BOX * 0.2);
+      const py = Math.max((y2 - y1) * 0.65, MIN_BOX * 0.4);
+      bx = x1 - px; by = y1 - py;
+      bw = Math.max((x2 - x1) + px * 2, MIN_BOX);
+      bh = Math.max((y2 - y1) + py * 2, MIN_BOX * 1.2);
+    } else {
+      const ls   = pose.keypoints.find(k => k.name === 'left_shoulder'  && k.confidence > 0.1);
+      const rs   = pose.keypoints.find(k => k.name === 'right_shoulder' && k.confidence > 0.1);
+      const nose = pose.keypoints.find(k => k.name === 'nose'           && k.confidence > 0.03);
+      if (!ls && !rs && !nose) return;
+      let midX, midY, boxW;
+      if (ls && rs) {
+        midX = (toSX(ls) + toSX(rs)) / 2; midY = (toSY(ls) + toSY(rs)) / 2;
+        boxW = Math.max(Math.abs(toSX(rs) - toSX(ls)) * 1.1, MIN_BOX);
       } else {
-        // Fallback: estimate head position from shoulders
-        const ls = pose.keypoints.find(k => k.name === 'left_shoulder'  && k.confidence > 0.1);
-        const rs = pose.keypoints.find(k => k.name === 'right_shoulder' && k.confidence > 0.1);
-        const nose = pose.keypoints.find(k => k.name === 'nose' && k.confidence > 0.03);
-        if (!ls && !rs && !nose) return;
-
-        let midX, midY, boxW;
-        if (ls && rs) {
-          midX  = (toSX(ls) + toSX(rs)) / 2;
-          midY  = (toSY(ls) + toSY(rs)) / 2;
-          boxW  = Math.max(Math.abs(toSX(rs) - toSX(ls)) * 1.1, MIN_BOX);
-        } else if (nose) {
-          midX  = toSX(nose);
-          midY  = toSY(nose);
-          boxW  = MIN_BOX;
-        } else {
-          return;
-        }
-        bw = boxW;
-        bh = boxW * 1.3;
-        bx = midX - bw / 2;
-        by = (ls && rs) ? midY - bh * 1.5 : midY - bh * 0.4;
+        midX = toSX(nose); midY = toSY(nose); boxW = MIN_BOX;
       }
-
-      detectionCtx.strokeStyle = 'rgba(255,255,255,0.7)';
-      detectionCtx.lineWidth   = BRACKET_W;
-      detectionCtx.lineCap     = 'square';
-
-      // top-left
-      detectionCtx.beginPath();
-      detectionCtx.moveTo(bx,            by + BRACKET);
-      detectionCtx.lineTo(bx,            by);
-      detectionCtx.lineTo(bx + BRACKET,  by);
-      detectionCtx.stroke();
-
-      // top-right
-      detectionCtx.beginPath();
-      detectionCtx.moveTo(bx + bw - BRACKET, by);
-      detectionCtx.lineTo(bx + bw,           by);
-      detectionCtx.lineTo(bx + bw,           by + BRACKET);
-      detectionCtx.stroke();
-
-      // bottom-right
-      detectionCtx.beginPath();
-      detectionCtx.moveTo(bx + bw,           by + bh - BRACKET);
-      detectionCtx.lineTo(bx + bw,           by + bh);
-      detectionCtx.lineTo(bx + bw - BRACKET, by + bh);
-      detectionCtx.stroke();
-
-      // bottom-left
-      detectionCtx.beginPath();
-      detectionCtx.moveTo(bx + BRACKET, by + bh);
-      detectionCtx.lineTo(bx,           by + bh);
-      detectionCtx.lineTo(bx,           by + bh - BRACKET);
-      detectionCtx.stroke();
+      bw = boxW; bh = boxW * 1.3;
+      bx = midX - bw / 2;
+      by = (ls && rs) ? midY - bh * 1.5 : midY - bh * 0.4;
     }
+
+    lb(bx,      by,      1,  1, ARM_FACE);
+    lb(bx + bw, by,     -1,  1, ARM_FACE);
+    lb(bx + bw, by + bh, -1, -1, ARM_FACE);
+    lb(bx,      by + bh,  1, -1, ARM_FACE);
   });
 }
 

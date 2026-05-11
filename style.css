@@ -77,8 +77,12 @@ body {
   display: none;
 }
 
-/* Bottom bar — 3:7 split, iOS style */
+/* Bottom bar — hidden, replaced by canvas text log */
 #bottom-bar {
+  display: none;
+}
+
+#bottom-bar-hidden {
   position: fixed;
   bottom: 20px;
   left: 20px;
