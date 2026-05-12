@@ -78,9 +78,9 @@ new p5(function (p) {
     showMask(0);
     setStatus('Loading model…');
 
-    bodyPose = ml5.bodyPose('MoveNet', { flipped: true, minPoseScore: 0.15 }, () => {
+    bodyPose = ml5.bodyPose('MoveNet', { flipped: false, minPoseScore: 0.15 }, () => {
       setStatus('Ready — show yourself');
-      bodyPose.detectStart(capture, onPoses);
+      bodyPose.detectStart(offscreen, onPoses); // use already-transformed canvas → coords match display directly
     });
   };
 
@@ -227,23 +227,12 @@ function lb(x, y, dx, dy, arm) {
 }
 
 function drawDetectionOverlay() {
-  const W      = window.innerWidth;
-  const H      = window.innerHeight;
-  const PAD    = 20;
-  const MARGIN = 48;
-  const ARM    = 24;
-  const FS     = 12;
-  const LH     = 17;
+  const W   = window.innerWidth;
+  const H   = window.innerHeight;
+  const PAD = 20;
+  const FS  = 12;
+  const LH  = 17;
   detectionCtx.clearRect(0, 0, W, H);
-
-  // ── Screen corner brackets (outward-pointing, always visible) ─────────────
-  detectionCtx.strokeStyle = 'rgba(255,255,255,0.45)';
-  detectionCtx.lineWidth   = 1;
-  detectionCtx.lineCap     = 'square';
-  lb(MARGIN,   MARGIN,    -1, -1, ARM);
-  lb(W-MARGIN, MARGIN,     1, -1, ARM);
-  lb(W-MARGIN, H-MARGIN,   1,  1, ARM);
-  lb(MARGIN,   H-MARGIN,  -1,  1, ARM);
 
   // ── Top-left status panel ──────────────────────────────────────────────────
   const TX = PAD + 2;
@@ -301,21 +290,9 @@ function drawDetectionOverlay() {
   // ── Face detection boxes ───────────────────────────────────────────────────
   if (!poses.length) return;
 
-  const srcW    = (capture && capture.elt.videoWidth)  || WEBCAM_W;
-  const srcH    = (capture && capture.elt.videoHeight) || WEBCAM_H;
-  const needSwap = W < H;
-
-  const _sa = srcW / srcH, _da = WEBCAM_W / WEBCAM_H;
-  let csx, csy, csw, csh;
-  if (_sa > _da) { csh = srcH; csw = srcH * _da; csx = (srcW - csw) / 2; csy = 0; }
-  else           { csw = srcW; csh = srcW / _da;  csx = 0; csy = (srcH - csh) / 2; }
-
-  const toSX = needSwap
-    ? k => (k.y - csy) / csh * W
-    : k => (k.x - csx) / csw * W;
-  const toSY = needSwap
-    ? k => ((srcW - k.x) - csx) / csw * H
-    : k => (k.y - csy) / csh * H;
+  // offscreen canvas is already cover-cropped + mirrored → coords map directly to screen
+  const toSX = k => k.x * W / WEBCAM_W;
+  const toSY = k => k.y * H / WEBCAM_H;
 
   detectionCtx.strokeStyle = 'rgba(255,255,255,0.75)';
   detectionCtx.lineWidth   = 1.5;
