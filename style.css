@@ -37,10 +37,6 @@ body {
   height: 100%;
 }
 
-/* Detection dot indicator — hidden */
-#detection-indicator {
-  display: none;
-}
 
 /* Fullscreen background videos — overlay blend above webcam */
 #video-container {
@@ -88,67 +84,3 @@ body {
 #bottom-bar {
   display: none;
 }
-
-#bottom-bar-hidden {
-  position: fixed;
-  bottom: 20px;
-  left: 20px;
-  right: 20px;
-  display: flex;
-  gap: 10px;
-  z-index: 30;
-  pointer-events: none;
-}
-
-#bottom-left {
-  flex: 3;
-  background: rgba(30, 30, 30, 0.65);
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  color: #fff;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 14px 18px;
-  min-height: 52px;
-}
-
-#bottom-right {
-  flex: 7;
-  background: rgba(30, 30, 30, 0.65);
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 14px 18px;
-  min-height: 52px;
-  letter-spacing: 0.01em;
-}
-
-.log-entry {
-  font-family: monospace;
-  font-size: 11px;
-  color: #888;
-  transition: opacity 0.4s ease;
-}
-
-/* Older entries fade out — nth-last-child(1) is newest */
-.log-entry:nth-last-child(1) { opacity: 1.0; }
-.log-entry:nth-last-child(2) { opacity: 0.65; }
-.log-entry:nth-last-child(3) { opacity: 0.40; }
-.log-entry:nth-last-child(4) { opacity: 0.22; }
-.log-entry:nth-last-child(5) { opacity: 0.10; }

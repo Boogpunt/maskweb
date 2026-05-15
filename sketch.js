@@ -76,10 +76,8 @@ new p5(function (p) {
     capture.hide();
 
     showMask(0);
-    setStatus('Loading model…');
 
     bodyPose = ml5.bodyPose('MoveNet', { flipped: false, minPoseScore: 0.15 }, () => {
-      setStatus('Ready — show yourself');
       bodyPose.detectStart(offscreen, onPoses); // use already-transformed canvas → coords match display directly
     });
   };
@@ -99,13 +97,6 @@ new p5(function (p) {
 });
 
 // ─── Pose callback ────────────────────────────────────────────────────────────
-const OBSERVER_MESSAGES = {
-  0: "When i'm alone",
-  1: "When I'm with my lover",
-  2: "When i'm with my besties",
-  3: "When i'm with my client",
-};
-
 const MASK_TEXTS = [
   { heading: "When I'm with my close friend",            desc: "I can show my negative aspects to them. Keep blaming world." },
   { heading: "When I'm with my business client",         desc: "I try to show me as a professional person. Be smart, act like a person who have a vision." },
@@ -122,16 +113,6 @@ function onPoses(results) {
     prevObserverCount = count;
     tryAdvanceMask();
   }
-
-  updateBottomBar(count);
-}
-
-function updateBottomBar(count) {
-  const leftEl  = document.getElementById('bottom-left');
-  const rightEl = document.getElementById('bottom-right');
-
-  leftEl.textContent = count === 0 ? 'Observer (0)' : `Observer (${count})`;
-  rightEl.textContent = OBSERVER_MESSAGES[Math.min(count, 3)] ?? '';
 }
 
 // ─── Mask video control ───────────────────────────────────────────────────────
@@ -155,7 +136,6 @@ function tryAdvanceMask() {
   const startPlay = () => {
     showMask(currentMaskIndex);
     v.play().catch(() => {});
-    setStatus(`Playing mask ${currentMaskIndex + 1}`);
     addTextLogEntry(currentMaskIndex);
   };
 
@@ -342,21 +322,3 @@ function drawDetectionOverlay() {
   });
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const statusLog = document.getElementById('status-log');
-const LOG_MAX   = 5;
-
-let _lastStatus = '';
-function setStatus(msg) {
-  if (msg === _lastStatus) return;
-  _lastStatus = msg;
-
-  const entry = document.createElement('div');
-  entry.className = 'log-entry';
-  entry.textContent = msg;
-  statusLog.appendChild(entry);
-
-  while (statusLog.children.length > LOG_MAX) {
-    statusLog.removeChild(statusLog.firstChild);
-  }
-}
