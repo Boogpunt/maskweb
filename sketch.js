@@ -2,8 +2,9 @@
 const WEBCAM_SCALE      = 0.6;   // processing resolution as fraction of screen (CSS stretches to fullscreen)
 const PLAYBACK_RATE     = 1.0;   // video speed (0.5 = half, 2.0 = double)
 const VIGNETTE_STRENGTH = 0.6;   // vignette edge darkening (0 = off, higher = stronger)
-const STABLE_FRAMES     = 20;    // consecutive frames a count must hold before triggering a transition
 const DETECT_INTERVAL   = 6;     // run pose detection every N draw frames
+const STABLE_FRAMES     = 5;     // consecutive detections (× DETECT_INTERVAL frames) before triggering
+const BOX_SMOOTH        = 0.2;   // EMA factor for box position (lower = smoother)
 
 // ─── Dynamic webcam dimensions ────────────────────────────────────────────────
 let WEBCAM_W = Math.round(window.innerWidth  * WEBCAM_SCALE);
@@ -20,10 +21,11 @@ let activeElement     = null;  // currently visible video, paused at last frame
 let textLog           = [];    // accumulated message log (newest last)
 
 let candidateCount    = -1;   // raw count currently being observed
-let stableFrames      = 0;    // consecutive frames candidateCount has held
-let modelReady        = false; // true once ml5 model has finished loading
-let detectReady       = true;  // gate: only one detect() in flight at a time
+let stableFrames      = 0;    // consecutive detections candidateCount has held
+let modelReady        = false;
+let detectReady       = true;
 let framesSinceDetect = 0;
+let smoothedBoxes     = [];   // per-observer EMA-smoothed { bx, by, bw, bh }
 
 const transVideos = {};
 [[1,2],[1,3],[2,1],[2,3],[3,1],[3,2],[1,0],[2,0],[3,0],[0,1],[0,2],[0,3]].forEach(([f,t]) => {
@@ -265,6 +267,7 @@ function drawDetectionOverlay() {
   }
 
   // ── Face detection boxes ───────────────────────────────────────────────────
+  smoothedBoxes = smoothedBoxes.slice(0, poses.length);
   if (!poses.length) return;
 
   // offscreen canvas is already cover-cropped + mirrored → coords map directly to screen
@@ -301,6 +304,18 @@ function drawDetectionOverlay() {
       bx = midX - bw / 2;
       by = (ls && rs) ? midY - bh * 1.5 : midY - bh * 0.4;
     }
+
+    // EMA smoothing
+    if (!smoothedBoxes[i]) {
+      smoothedBoxes[i] = { bx, by, bw, bh };
+    } else {
+      const s = smoothedBoxes[i];
+      s.bx = BOX_SMOOTH * bx + (1 - BOX_SMOOTH) * s.bx;
+      s.by = BOX_SMOOTH * by + (1 - BOX_SMOOTH) * s.by;
+      s.bw = BOX_SMOOTH * bw + (1 - BOX_SMOOTH) * s.bw;
+      s.bh = BOX_SMOOTH * bh + (1 - BOX_SMOOTH) * s.bh;
+    }
+    ({ bx, by, bw, bh } = smoothedBoxes[i]);
 
     // Rounded detection box
     detectionCtx.strokeStyle = 'rgba(60,60,60,0.75)';
