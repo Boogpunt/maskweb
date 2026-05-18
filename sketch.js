@@ -68,7 +68,7 @@ new p5(function (p) {
     capture.size(WEBCAM_W, WEBCAM_H);
     capture.hide();
 
-    bodyPose = ml5.bodyPose('MoveNet', { flipped: false, minPoseScore: 0.3 }, () => {
+    bodyPose = ml5.bodyPose('MoveNet', { flipped: false, minPoseScore: 0.4 }, () => {
       modelReady = true;
     });
   };
@@ -106,8 +106,29 @@ const MASK_TEXTS = [
   { heading: "When I'm surrounded with lots of people",  desc: "I have to show me as a positive person. Keep listening what people said and let them do it" },
 ];
 
+function deduplicatePoses(results) {
+  // Sort highest-confidence first, then drop any pose whose nose is too close to an already-kept one
+  const MIN_DIST = Math.min(WEBCAM_W, WEBCAM_H) * 0.3;
+  const sorted = [...results].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+  const kept = [];
+  for (const pose of sorted) {
+    const nose = pose.keypoints.find(k => k.name === 'nose' && k.confidence > 0.1);
+    if (nose) {
+      const isDup = kept.some(p => {
+        const n = p.keypoints.find(k => k.name === 'nose');
+        if (!n) return false;
+        const dx = nose.x - n.x, dy = nose.y - n.y;
+        return Math.sqrt(dx * dx + dy * dy) < MIN_DIST;
+      });
+      if (isDup) continue;
+    }
+    kept.push(pose);
+  }
+  return kept;
+}
+
 function onPoses(results) {
-  poses = results;
+  poses = deduplicatePoses(results);
   const raw = Math.min(poses.length, 3);
 
   if (raw === candidateCount) {
