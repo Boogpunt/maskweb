@@ -1,7 +1,8 @@
 // ─── Config ───────────────────────────────────────────────────────────────────
 const WEBCAM_SCALE      = 0.6;   // processing resolution as fraction of screen (CSS stretches to fullscreen)
 const PLAYBACK_RATE     = 1.0;   // video speed (0.5 = half, 2.0 = double)
-const VIGNETTE_STRENGTH = 0.6; // vignette edge darkening (0 = off, higher = stronger)
+const VIGNETTE_STRENGTH = 0.6;   // vignette edge darkening (0 = off, higher = stronger)
+const STABLE_FRAMES     = 20;    // consecutive frames a count must hold before triggering a transition
 
 // ─── Dynamic webcam dimensions ────────────────────────────────────────────────
 let WEBCAM_W = Math.round(window.innerWidth  * WEBCAM_SCALE);
@@ -14,9 +15,12 @@ let poses = [];
 
 let currentMaskNum    = 1;     // 1-indexed: which mask state we're in (1, 2, or 3)
 let maskIsPlaying     = false;
-let prevObserverCount = -1;
 let activeElement     = null;  // currently visible video, paused at last frame
 let textLog           = [];    // accumulated message log (newest last)
+
+let candidateCount    = -1;   // raw count currently being observed
+let stableFrames      = 0;    // how many consecutive frames candidateCount has held
+let confirmedCount    = -1;   // last count that passed the stability threshold
 
 const transVideos = {};
 [[1,2],[1,3],[2,1],[2,3],[3,1],[3,2],[1,0],[2,0],[3,0],[0,1],[0,2],[0,3]].forEach(([f,t]) => {
@@ -59,7 +63,7 @@ new p5(function (p) {
     capture.size(WEBCAM_W, WEBCAM_H);
     capture.hide();
 
-    bodyPose = ml5.bodyPose('MoveNet', { flipped: false, minPoseScore: 0.15 }, () => {
+    bodyPose = ml5.bodyPose('MoveNet', { flipped: false, minPoseScore: 0.3 }, () => {
       bodyPose.detectStart(offscreen, onPoses); // use already-transformed canvas → coords match display directly
     });
   };
@@ -87,14 +91,18 @@ const MASK_TEXTS = [
 
 function onPoses(results) {
   poses = results;
-  const count = poses.length;
+  const raw = Math.min(poses.length, 3);  // clamp to 0-3
 
-  if (count !== prevObserverCount) {
-    prevObserverCount = count;
-    const targetNum = Math.min(count, 3);  // 0, 1, 2, or 3
-    if (targetNum !== currentMaskNum) {
-      tryTransition(currentMaskNum, targetNum);
-    }
+  if (raw === candidateCount) {
+    stableFrames++;
+  } else {
+    candidateCount = raw;
+    stableFrames   = 1;
+  }
+
+  if (stableFrames >= STABLE_FRAMES && raw !== confirmedCount) {
+    confirmedCount = raw;
+    if (raw !== currentMaskNum) tryTransition(currentMaskNum, raw);
   }
 }
 
