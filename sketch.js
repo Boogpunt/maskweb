@@ -3,7 +3,7 @@ const WEBCAM_SCALE      = 0.6;   // processing resolution as fraction of screen 
 const PLAYBACK_RATE     = 1.0;   // video speed (0.5 = half, 2.0 = double)
 const VIGNETTE_STRENGTH = 0.6;   // vignette edge darkening (0 = off, higher = stronger)
 const STABLE_FRAMES     = 20;    // consecutive frames a count must hold before triggering a transition
-const BOX_SMOOTH        = 0.12;  // EMA factor for box position (lower = smoother, higher = snappier)
+const DETECT_INTERVAL   = 6;     // run pose detection every N draw frames
 
 // ─── Dynamic webcam dimensions ────────────────────────────────────────────────
 let WEBCAM_W = Math.round(window.innerWidth  * WEBCAM_SCALE);
@@ -21,7 +21,8 @@ let textLog           = [];    // accumulated message log (newest last)
 
 let candidateCount    = -1;   // raw count currently being observed
 let stableFrames      = 0;    // consecutive frames candidateCount has held
-let smoothedBoxes     = [];   // per-observer EMA-smoothed box { bx, by, bw, bh }
+let detectReady       = true; // gate: only one detect() in flight at a time
+let framesSinceDetect = 0;
 
 const transVideos = {};
 [[1,2],[1,3],[2,1],[2,3],[3,1],[3,2],[1,0],[2,0],[3,0],[0,1],[0,2],[0,3]].forEach(([f,t]) => {
@@ -64,14 +65,24 @@ new p5(function (p) {
     capture.size(WEBCAM_W, WEBCAM_H);
     capture.hide();
 
-    bodyPose = ml5.bodyPose('MoveNet', { flipped: false, minPoseScore: 0.3 }, () => {
-      bodyPose.detectStart(offscreen, onPoses); // use already-transformed canvas → coords match display directly
-    });
+    bodyPose = ml5.bodyPose('MoveNet', { flipped: false, minPoseScore: 0.3 });
   };
 
   p.draw = function () {
     drawWebcamPreview();
     drawDetectionOverlay();
+
+    if (bodyPose && detectReady) {
+      framesSinceDetect++;
+      if (framesSinceDetect >= DETECT_INTERVAL) {
+        framesSinceDetect = 0;
+        detectReady = false;
+        bodyPose.detect(offscreen, (results) => {
+          onPoses(results);
+          detectReady = true;
+        });
+      }
+    }
   };
 
   p.windowResized = function () {
@@ -251,7 +262,6 @@ function drawDetectionOverlay() {
   }
 
   // ── Face detection boxes ───────────────────────────────────────────────────
-  smoothedBoxes = smoothedBoxes.slice(0, poses.length);  // drop stale entries
   if (!poses.length) return;
 
   // offscreen canvas is already cover-cropped + mirrored → coords map directly to screen
@@ -288,18 +298,6 @@ function drawDetectionOverlay() {
       bx = midX - bw / 2;
       by = (ls && rs) ? midY - bh * 1.5 : midY - bh * 0.4;
     }
-
-    // EMA smoothing
-    if (!smoothedBoxes[i]) {
-      smoothedBoxes[i] = { bx, by, bw, bh };
-    } else {
-      const s = smoothedBoxes[i];
-      s.bx = BOX_SMOOTH * bx + (1 - BOX_SMOOTH) * s.bx;
-      s.by = BOX_SMOOTH * by + (1 - BOX_SMOOTH) * s.by;
-      s.bw = BOX_SMOOTH * bw + (1 - BOX_SMOOTH) * s.bw;
-      s.bh = BOX_SMOOTH * bh + (1 - BOX_SMOOTH) * s.bh;
-    }
-    ({ bx, by, bw, bh } = smoothedBoxes[i]);
 
     // Rounded detection box
     detectionCtx.strokeStyle = 'rgba(60,60,60,0.75)';
