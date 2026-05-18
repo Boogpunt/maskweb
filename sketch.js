@@ -13,14 +13,13 @@ let capture;
 let bodyPose;
 let poses = [];
 
-let currentMaskNum    = 1;     // 1-indexed: which mask state we're in (1, 2, or 3)
+let currentMaskNum    = 0;     // 0 = blank, 1-3 = mask state
 let maskIsPlaying     = false;
 let activeElement     = null;  // currently visible video, paused at last frame
 let textLog           = [];    // accumulated message log (newest last)
 
 let candidateCount    = -1;   // raw count currently being observed
-let stableFrames      = 0;    // how many consecutive frames candidateCount has held
-let confirmedCount    = -1;   // last count that passed the stability threshold
+let stableFrames      = 0;    // consecutive frames candidateCount has held
 
 const transVideos = {};
 [[1,2],[1,3],[2,1],[2,3],[3,1],[3,2],[1,0],[2,0],[3,0],[0,1],[0,2],[0,3]].forEach(([f,t]) => {
@@ -91,7 +90,7 @@ const MASK_TEXTS = [
 
 function onPoses(results) {
   poses = results;
-  const raw = Math.min(poses.length, 3);  // clamp to 0-3
+  const raw = Math.min(poses.length, 3);
 
   if (raw === candidateCount) {
     stableFrames++;
@@ -100,9 +99,9 @@ function onPoses(results) {
     stableFrames   = 1;
   }
 
-  if (stableFrames >= STABLE_FRAMES && raw !== confirmedCount) {
-    confirmedCount = raw;
-    if (raw !== currentMaskNum) tryTransition(currentMaskNum, raw);
+  if (stableFrames >= STABLE_FRAMES && raw !== currentMaskNum) {
+    stableFrames = 0;  // reset so we don't spam tryTransition while maskIsPlaying blocks
+    tryTransition(currentMaskNum, raw);
   }
 }
 
