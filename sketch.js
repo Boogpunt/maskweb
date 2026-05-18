@@ -15,8 +15,11 @@ let poses = [];
 let currentMaskNum    = 1;     // 1-indexed: which mask state we're in (1, 2, or 3)
 let maskIsPlaying     = false;
 let prevObserverCount = -1;
-let activeVideo       = null;  // currently visible transition video (paused at last frame)
+let activeElement     = null;  // currently visible element (video paused at last frame, or reverse canvas)
 let textLog           = [];    // accumulated message log (newest last)
+
+const reverseCanvas = document.getElementById('reverse-canvas');
+const reverseCtx    = reverseCanvas.getContext('2d');
 
 const transVideos = {};
 [[1,2],[1,3],[2,1],[2,3],[3,1],[3,2],[1,0],[2,0],[3,0]].forEach(([f,t]) => {
@@ -98,18 +101,72 @@ function onPoses(results) {
   }
 }
 
+// ─── Reverse playback — seeks mask_X_0 from end to start, draws frames to canvas ──
+function playVideoReverse(video, onComplete) {
+  reverseCanvas.width  = window.innerWidth;
+  reverseCanvas.height = window.innerHeight;
+
+  const STEP = 1 / 30;
+
+  function tick() {
+    const next = video.currentTime - STEP;
+    if (next <= 0) {
+      reverseCtx.drawImage(video, 0, 0, reverseCanvas.width, reverseCanvas.height);
+      onComplete();
+      return;
+    }
+    video.currentTime = next;
+    video.addEventListener('seeked', () => {
+      reverseCtx.drawImage(video, 0, 0, reverseCanvas.width, reverseCanvas.height);
+      requestAnimationFrame(tick);
+    }, { once: true });
+  }
+
+  const start = () => {
+    video.currentTime = video.duration;
+    video.addEventListener('seeked', () => {
+      reverseCtx.drawImage(video, 0, 0, reverseCanvas.width, reverseCanvas.height);
+      requestAnimationFrame(tick);
+    }, { once: true });
+  };
+
+  if (video.readyState >= 1) {
+    start();
+  } else {
+    video.addEventListener('loadedmetadata', start, { once: true });
+  }
+}
+
 // ─── Mask video control ───────────────────────────────────────────────────────
 function tryTransition(fromNum, toNum) {
   if (maskIsPlaying) return;
-
-  const tv = transVideos[`${fromNum}_${toNum}`];
-  if (!tv) return;
-
   maskIsPlaying = true;
+
+  // 0 → N: reverse-play mask_N_0
+  if (fromNum === 0) {
+    const tv = transVideos[`${toNum}_0`];
+    if (!tv) { currentMaskNum = toNum; maskIsPlaying = false; return; }
+
+    if (activeElement) activeElement.classList.remove('active');
+    reverseCanvas.classList.add('active');
+
+    playVideoReverse(tv, () => {
+      activeElement  = reverseCanvas;
+      currentMaskNum = toNum;
+      addTextLogEntry(toNum - 1);
+      maskIsPlaying  = false;
+    });
+    return;
+  }
+
+  // N → M  or  N → 0: forward-play mask_N_M
+  const tv = transVideos[`${fromNum}_${toNum}`];
+  if (!tv) { maskIsPlaying = false; return; }
+
   tv.playbackRate = PLAYBACK_RATE;
 
   const startTrans = () => {
-    if (activeVideo && activeVideo !== tv) activeVideo.classList.remove('active');
+    if (activeElement && activeElement !== tv) activeElement.classList.remove('active');
     tv.classList.add('active');
     tv.play().catch(() => {});
   };
@@ -117,9 +174,9 @@ function tryTransition(fromNum, toNum) {
   tv.addEventListener('ended', () => {
     if (toNum === 0) {
       tv.classList.remove('active');
-      activeVideo = null;
+      activeElement = null;
     } else {
-      activeVideo = tv;  // leave visible, paused at last frame
+      activeElement = tv;  // leave visible, paused at last frame
     }
     currentMaskNum = toNum;
     if (toNum > 0) addTextLogEntry(toNum - 1);
