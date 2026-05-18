@@ -21,7 +21,8 @@ let textLog           = [];    // accumulated message log (newest last)
 
 let candidateCount    = -1;   // raw count currently being observed
 let stableFrames      = 0;    // consecutive frames candidateCount has held
-let detectReady       = true; // gate: only one detect() in flight at a time
+let modelReady        = false; // true once ml5 model has finished loading
+let detectReady       = true;  // gate: only one detect() in flight at a time
 let framesSinceDetect = 0;
 
 const transVideos = {};
@@ -65,14 +66,16 @@ new p5(function (p) {
     capture.size(WEBCAM_W, WEBCAM_H);
     capture.hide();
 
-    bodyPose = ml5.bodyPose('MoveNet', { flipped: false, minPoseScore: 0.3 });
+    bodyPose = ml5.bodyPose('MoveNet', { flipped: false, minPoseScore: 0.3 }, () => {
+      modelReady = true;
+    });
   };
 
   p.draw = function () {
     drawWebcamPreview();
     drawDetectionOverlay();
 
-    if (bodyPose && detectReady) {
+    if (modelReady && detectReady) {
       framesSinceDetect++;
       if (framesSinceDetect >= DETECT_INTERVAL) {
         framesSinceDetect = 0;
