@@ -12,18 +12,17 @@ let capture;
 let bodyPose;
 let poses = [];
 
-let currentMaskIndex  = 0;
+let currentMaskNum    = 1;     // 1-indexed: which mask state we're in (1, 2, or 3)
 let maskIsPlaying     = false;
-let prevObserverCount = -1;    // triggers next video when observer count changes
+let prevObserverCount = -1;
+let activeVideo       = null;  // currently visible transition video (paused at last frame)
 let textLog           = [];    // accumulated message log (newest last)
 
-const maskVideos = [
-  document.getElementById('mask1'),
-  document.getElementById('mask2'),
-  document.getElementById('mask3'),
-];
+const transVideos = {};
+[[1,2],[1,3],[2,1],[2,3],[3,1],[3,2],[1,0],[2,0],[3,0]].forEach(([f,t]) => {
+  transVideos[`${f}_${t}`] = document.getElementById(`trans_${f}_${t}`);
+});
 
-const webcamContainer    = document.getElementById('webcam-container');
 const webcamCanvas       = document.getElementById('webcam-canvas');
 const webcamCtx          = webcamCanvas.getContext('2d');
 const detectionCanvas    = document.getElementById('detection-overlay');
@@ -47,21 +46,6 @@ function applyCanvasSize() {
   detectionCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
-// ─── Mask video setup ─────────────────────────────────────────────────────────
-
-// Show first frame of mask1 on load
-maskVideos[0].addEventListener('loadeddata', () => {
-  maskVideos[0].currentTime = 0;
-  maskVideos[0].pause();
-}, { once: true });
-
-// When a video finishes, allow next trigger
-maskVideos.forEach(v => {
-  v.addEventListener('ended', () => {
-    maskIsPlaying = false;
-  });
-});
-
 // ─── p5 sketch ────────────────────────────────────────────────────────────────
 new p5(function (p) {
 
@@ -74,8 +58,6 @@ new p5(function (p) {
     capture = p.createCapture({ video: { facingMode: 'user' }, audio: false });
     capture.size(WEBCAM_W, WEBCAM_H);
     capture.hide();
-
-    showMask(0);
 
     bodyPose = ml5.bodyPose('MoveNet', { flipped: false, minPoseScore: 0.15 }, () => {
       bodyPose.detectStart(offscreen, onPoses); // use already-transformed canvas → coords match display directly
@@ -107,43 +89,48 @@ function onPoses(results) {
   poses = results;
   const count = poses.length;
 
-  webcamContainer.classList.toggle('detected', count > 0);
-
   if (count !== prevObserverCount) {
     prevObserverCount = count;
-    tryAdvanceMask();
+    const targetNum = Math.min(count, 3);  // 0, 1, 2, or 3
+    if (targetNum !== currentMaskNum) {
+      tryTransition(currentMaskNum, targetNum);
+    }
   }
 }
 
 // ─── Mask video control ───────────────────────────────────────────────────────
-function showMask(index) {
-  maskVideos.forEach((v, i) => {
-    v.classList.toggle('active', i === index);
-    if (i !== index) v.pause();
-  });
-}
-
-function tryAdvanceMask() {
+function tryTransition(fromNum, toNum) {
   if (maskIsPlaying) return;
 
-  currentMaskIndex = (currentMaskIndex + 1) % maskVideos.length;
+  const tv = transVideos[`${fromNum}_${toNum}`];
+  if (!tv) return;
+
   maskIsPlaying = true;
+  tv.playbackRate = PLAYBACK_RATE;
 
-  const v = maskVideos[currentMaskIndex];
-  v.playbackRate = PLAYBACK_RATE;
-
-  // Seek to frame 0 while still hidden, show + play only after seek is ready
-  const startPlay = () => {
-    showMask(currentMaskIndex);
-    v.play().catch(() => {});
-    addTextLogEntry(currentMaskIndex);
+  const startTrans = () => {
+    if (activeVideo && activeVideo !== tv) activeVideo.classList.remove('active');
+    tv.classList.add('active');
+    tv.play().catch(() => {});
   };
 
-  if (v.currentTime === 0) {
-    startPlay();
+  tv.addEventListener('ended', () => {
+    if (toNum === 0) {
+      tv.classList.remove('active');
+      activeVideo = null;
+    } else {
+      activeVideo = tv;  // leave visible, paused at last frame
+    }
+    currentMaskNum = toNum;
+    if (toNum > 0) addTextLogEntry(toNum - 1);
+    maskIsPlaying = false;
+  }, { once: true });
+
+  if (tv.currentTime === 0) {
+    startTrans();
   } else {
-    v.addEventListener('seeked', startPlay, { once: true });
-    v.currentTime = 0;
+    tv.addEventListener('seeked', startTrans, { once: true });
+    tv.currentTime = 0;
   }
 }
 
@@ -198,14 +185,6 @@ const FACE_KPS = ['nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear',
                   'left_shoulder', 'right_shoulder'];
 const BOX_KPS  = ['nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear'];
 
-function lb(x, y, dx, dy, arm) {
-  detectionCtx.beginPath();
-  detectionCtx.moveTo(x + dx * arm, y);
-  detectionCtx.lineTo(x, y);
-  detectionCtx.lineTo(x, y + dy * arm);
-  detectionCtx.stroke();
-}
-
 function drawDetectionOverlay() {
   const W   = window.innerWidth;
   const H   = window.innerHeight;
@@ -217,7 +196,7 @@ function drawDetectionOverlay() {
   // ── Top-left status panel ──────────────────────────────────────────────────
   const TX = PAD + 2;
   let   ty = PAD + 2;
-  const maskLabel = String(currentMaskIndex + 1).padStart(2, '0');
+  const maskLabel = String(currentMaskNum).padStart(2, '0');
 
   detectionCtx.font         = `400 ${FS}px 'Chakra Petch', sans-serif`;
   detectionCtx.textAlign    = 'left';
