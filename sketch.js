@@ -207,9 +207,9 @@ function drawDetectionOverlay() {
   const COL2 = TX + 120; // value column x
 
   function statusRow(label, value, labelOp, valueOp) {
-    detectionCtx.fillStyle = `rgba(255,255,255,${labelOp})`;
+    detectionCtx.fillStyle = `rgba(60,60,60,${labelOp})`;
     detectionCtx.fillText(label, TX, ty);
-    detectionCtx.fillStyle = `rgba(255,255,255,${valueOp})`;
+    detectionCtx.fillStyle = `rgba(60,60,60,${valueOp})`;
     detectionCtx.fillText(value, COL2, ty);
     ty += LH;
   }
@@ -242,7 +242,7 @@ function drawDetectionOverlay() {
       const bot = LOG_BOT - age * (ELH * 2 + 3 + ENTRY_GAP);
 
       detectionCtx.font      = `400 ${FS}px 'Chakra Petch', sans-serif`;
-      detectionCtx.fillStyle = `rgba(255,255,255,${op})`;
+      detectionCtx.fillStyle = `rgba(60,60,60,${op})`;
       detectionCtx.fillText(`  ${e.desc}`, LX, bot);
       detectionCtx.fillText(`[${e.num}] ${e.heading}`, LX, bot - ELH - 2);
     }
@@ -254,9 +254,6 @@ function drawDetectionOverlay() {
   // offscreen canvas is already cover-cropped + mirrored → coords map directly to screen
   const toSX = k => k.x * W / WEBCAM_W;
   const toSY = k => k.y * H / WEBCAM_H;
-
-  detectionCtx.strokeStyle = 'rgba(255,255,255,0.75)';
-  detectionCtx.lineWidth   = 1.5;
 
   poses.forEach((pose, i) => {
     const fpts    = pose.keypoints.filter(k => BOX_KPS.includes(k.name) && k.confidence > 0.05);
@@ -289,17 +286,29 @@ function drawDetectionOverlay() {
       by = (ls && rs) ? midY - bh * 1.5 : midY - bh * 0.4;
     }
 
-    // Rounded detection box
+    // Dark semi-transparent fill box
+    detectionCtx.fillStyle = 'rgba(0,0,0,0.4)';
     detectionCtx.beginPath();
     detectionCtx.roundRect(bx, by, bw, bh, 10);
-    detectionCtx.stroke();
+    detectionCtx.fill();
 
-    // Observer label below box
-    detectionCtx.font         = `400 ${FS}px 'Chakra Petch', sans-serif`;
-    detectionCtx.fillStyle    = 'rgba(255,255,255,0.6)';
+    // Badge label below box
+    const label = `observer_${String(i + 1).padStart(2, '0')}`;
+    const LPAD  = 6;
+    const LVPAD = 4;
+    detectionCtx.font = `400 ${FS}px 'Chakra Petch', sans-serif`;
+    const lblW = detectionCtx.measureText(label).width + LPAD * 2;
+    const lblH = FS + LVPAD * 2;
+    const lblX = bx;
+    const lblY = by + bh + 4;
+
+    detectionCtx.fillStyle = 'rgba(0,0,0,0.6)';
+    detectionCtx.fillRect(lblX, lblY, lblW, lblH);
+
+    detectionCtx.fillStyle    = 'rgba(255,255,255,0.85)';
     detectionCtx.textAlign    = 'left';
     detectionCtx.textBaseline = 'top';
-    detectionCtx.fillText(`observer_${String(i + 1).padStart(2, '0')}`, bx, by + bh + 4);
+    detectionCtx.fillText(label, lblX + LPAD, lblY + LVPAD);
   });
 }
 

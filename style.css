@@ -73,6 +73,5 @@ body {
   height: 100%;
   z-index: 25;
   pointer-events: none;
-  mix-blend-mode: difference;
 }
 
