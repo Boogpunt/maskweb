@@ -286,29 +286,19 @@ function drawDetectionOverlay() {
       by = (ls && rs) ? midY - bh * 1.5 : midY - bh * 0.4;
     }
 
-    // Dark semi-transparent fill box
-    detectionCtx.fillStyle = 'rgba(0,0,0,0.4)';
+    // Rounded detection box
+    detectionCtx.strokeStyle = 'rgba(60,60,60,0.75)';
+    detectionCtx.lineWidth   = 1.5;
     detectionCtx.beginPath();
     detectionCtx.roundRect(bx, by, bw, bh, 10);
-    detectionCtx.fill();
+    detectionCtx.stroke();
 
-    // Badge label below box
-    const label = `observer_${String(i + 1).padStart(2, '0')}`;
-    const LPAD  = 6;
-    const LVPAD = 4;
-    detectionCtx.font = `400 ${FS}px 'Chakra Petch', sans-serif`;
-    const lblW = detectionCtx.measureText(label).width + LPAD * 2;
-    const lblH = FS + LVPAD * 2;
-    const lblX = bx;
-    const lblY = by + bh + 4;
-
-    detectionCtx.fillStyle = 'rgba(0,0,0,0.6)';
-    detectionCtx.fillRect(lblX, lblY, lblW, lblH);
-
-    detectionCtx.fillStyle    = 'rgba(255,255,255,0.85)';
+    // Observer label below box
+    detectionCtx.font         = `400 ${FS}px 'Chakra Petch', sans-serif`;
+    detectionCtx.fillStyle    = 'rgba(60,60,60,0.6)';
     detectionCtx.textAlign    = 'left';
     detectionCtx.textBaseline = 'top';
-    detectionCtx.fillText(label, lblX + LPAD, lblY + LVPAD);
+    detectionCtx.fillText(`observer_${String(i + 1).padStart(2, '0')}`, bx, by + bh + 4);
   });
 }
 
