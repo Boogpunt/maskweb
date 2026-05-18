@@ -172,12 +172,7 @@ function tryTransition(fromNum, toNum) {
   };
 
   tv.addEventListener('ended', () => {
-    if (toNum === 0) {
-      tv.classList.remove('active');
-      activeElement = null;
-    } else {
-      activeElement = tv;  // leave visible, paused at last frame
-    }
+    activeElement  = tv;  // leave visible, paused at last frame
     currentMaskNum = toNum;
     if (toNum > 0) addTextLogEntry(toNum - 1);
     maskIsPlaying = false;
