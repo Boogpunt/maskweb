@@ -75,6 +75,27 @@ body {
   pointer-events: none;
 }
 
+/* Top-center refresh button */
+#refresh-btn {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 18px;
+  color: rgba(60, 60, 60, 0.6);
+  background: none;
+  border: none;
+  cursor: pointer;
+  z-index: 30;
+  padding: 4px 10px;
+  line-height: 1;
+}
+
+#refresh-btn:hover {
+  color: rgba(60, 60, 60, 0.9);
+}
+
 /* Top-right title */
 #title-text {
   position: fixed;
