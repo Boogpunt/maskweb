@@ -39,25 +39,14 @@ body {
 }
 
 
-/* White background — between webcam and videos */
-#white-bg {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: #fff;
-  z-index: 2;
-}
-
-/* Fullscreen mask videos — blend above white background */
+/* Fullscreen background videos — overlay blend above webcam */
 #video-container {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 3;
+  z-index: 2;
   mix-blend-mode: difference;
 }
 
