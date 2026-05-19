@@ -116,7 +116,7 @@ const OBSERVER_MESSAGES = [
   'Fred again.. feat. The Blessed Madonna - Marea',
   'Jai Paul - Jasmine (Demo)',
 ];
-const msgObserver       = document.getElementById('msg-observer');
+const msgCombined       = document.getElementById('msg-combined');
 
 // ─── Pose callback ────────────────────────────────────────────────────────────
 
@@ -237,8 +237,8 @@ function drawDetectionOverlay() {
   const W   = window.innerWidth;
   const H   = window.innerHeight;
   const PAD = 20;
-  const FS  = 12;
-  const LH  = 17;
+  const FS  = 14;
+  const LH  = 20;
   detectionCtx.clearRect(0, 0, W, H);
 
   // ── Top-left status panel ──────────────────────────────────────────────────
@@ -273,9 +273,9 @@ function drawDetectionOverlay() {
 
   // ── Bottom messages — updated via DOM ─────────────────────────────────────
   const newMsg = OBSERVER_MESSAGES[Math.min(poses.length, 3)];
-  if (msgObserver.dataset.target !== newMsg) {
-    msgObserver.dataset.target = newMsg;
-    typewrite(msgObserver, newMsg);
+  if (msgCombined.dataset.target !== newMsg) {
+    msgCombined.dataset.target = newMsg;
+    typewrite(msgCombined, "I would say i'm listening\n" + newMsg);
   }
 
   // ── Face detection boxes ───────────────────────────────────────────────────
