@@ -99,7 +99,12 @@ new p5(function (p) {
 });
 
 // ─── Messages ─────────────────────────────────────────────────────────────────
-const OBSERVER_MESSAGES = ['Music 0', 'Music 1', 'Music 2', 'Music 3'];
+const OBSERVER_MESSAGES = [
+  'Evangelion - Tsubasa wo Kudasai',
+  'Franco Micalizzi: Stridulum - Sadness Theme',
+  'Fred again.. feat. The Blessed Madonna - Marea',
+  'Jai Paul - Jasmine (Demo)',
+];
 const msgObserver       = document.getElementById('msg-observer');
 
 // ─── Pose callback ────────────────────────────────────────────────────────────
