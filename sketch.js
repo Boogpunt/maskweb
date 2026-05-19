@@ -99,8 +99,8 @@ new p5(function (p) {
 });
 
 // ─── Messages ─────────────────────────────────────────────────────────────────
-const STATIC_MESSAGE    = "I would say i'm listening";
 const OBSERVER_MESSAGES = ['Music 0', 'Music 1', 'Music 2', 'Music 3'];
+const msgObserver       = document.getElementById('msg-observer');
 
 // ─── Pose callback ────────────────────────────────────────────────────────────
 
@@ -255,23 +255,9 @@ function drawDetectionOverlay() {
     statusRow(`  observer_${String(i + 1).padStart(2, '0')}`, `${pct} %`, 0.4, 0.85);
   });
 
-  // ── Bottom messages ────────────────────────────────────────────────────────
-  const MSG_FS  = FS * 2;        // 24px
-  const MSG_PAD = PAD * 2;       // 40px margin from edges
-  const MSG_GAP = MSG_FS * 0.6;  // gap between the two lines
-
-  detectionCtx.font      = `400 ${MSG_FS}px 'Chakra Petch', sans-serif`;
-  detectionCtx.textAlign    = 'left';
-  detectionCtx.textBaseline = 'bottom';
-
-  // Static line at bottom
-  detectionCtx.fillStyle = `rgba(60,60,60,0.9)`;
-  detectionCtx.fillText(STATIC_MESSAGE, MSG_PAD, H - MSG_PAD);
-
-  // Observer-count message above static line
-  const observerMsg = OBSERVER_MESSAGES[Math.min(poses.length, 3)];
-  detectionCtx.fillStyle = `rgba(60,60,60,0.55)`;
-  detectionCtx.fillText(observerMsg, MSG_PAD, H - MSG_PAD - MSG_FS - MSG_GAP);
+  // ── Bottom messages — updated via DOM ─────────────────────────────────────
+  const newMsg = OBSERVER_MESSAGES[Math.min(poses.length, 3)];
+  if (msgObserver.textContent !== newMsg) msgObserver.textContent = newMsg;
 
   // ── Face detection boxes ───────────────────────────────────────────────────
   smoothedBoxes = smoothedBoxes.slice(0, poses.length);
