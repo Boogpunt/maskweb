@@ -26,6 +26,7 @@ let modelReady        = false;
 let detectReady       = true;
 let framesSinceDetect = 0;
 let smoothedBoxes     = [];   // per-observer EMA-smoothed { bx, by, bw, bh }
+let trackedPoses      = [];   // previous-frame poses used for stable ordering
 
 const transVideos = {};
 [[1,2],[1,3],[2,1],[2,3],[3,1],[3,2],[1,0],[2,0],[3,0],[0,1],[0,2],[0,3]].forEach(([f,t]) => {
@@ -153,8 +154,32 @@ function deduplicatePoses(results) {
   return kept;
 }
 
+function stableOrderPoses(newPoses) {
+  if (!trackedPoses.length) return newPoses;
+  const MATCH_DIST = Math.min(WEBCAM_W, WEBCAM_H) * 0.4;
+  const used = new Array(newPoses.length).fill(false);
+  const result = [];
+  for (const prev of trackedPoses) {
+    const pn = prev.keypoints.find(k => k.name === 'nose' && k.confidence > 0.05);
+    let bestIdx = -1, bestDist = MATCH_DIST;
+    for (let j = 0; j < newPoses.length; j++) {
+      if (used[j]) continue;
+      const nn = newPoses[j].keypoints.find(k => k.name === 'nose' && k.confidence > 0.05);
+      if (!pn || !nn) continue;
+      const dx = pn.x - nn.x, dy = pn.y - nn.y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d < bestDist) { bestDist = d; bestIdx = j; }
+    }
+    if (bestIdx >= 0) { used[bestIdx] = true; result.push(newPoses[bestIdx]); }
+  }
+  newPoses.forEach((p, j) => { if (!used[j]) result.push(p); });
+  return result;
+}
+
 function onPoses(results) {
-  poses = deduplicatePoses(results);
+  const deduped = deduplicatePoses(results);
+  poses = stableOrderPoses(deduped);
+  trackedPoses = poses;
   const raw = Math.min(poses.length, 3);
 
   if (raw === candidateCount) {
