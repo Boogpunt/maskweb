@@ -94,7 +94,7 @@ body {
   font-family: 'Chakra Petch', sans-serif;
   font-size: 24px;
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(90, 90, 90, 0.9);
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -102,5 +102,11 @@ body {
   padding: 12px 28px;
   white-space: nowrap;
   text-align: center;
+  box-shadow:
+    0 1px 2px  rgba(0, 0, 0, 0.06),
+    0 3px 8px  rgba(0, 0, 0, 0.10),
+    0 8px 20px rgba(0, 0, 0, 0.10),
+    0 20px 48px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 

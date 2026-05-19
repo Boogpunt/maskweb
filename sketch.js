@@ -98,6 +98,17 @@ new p5(function (p) {
 
 });
 
+// ─── Typewriter ───────────────────────────────────────────────────────────────
+let _twTimer = null;
+function typewrite(el, text, speed = 38) {
+  if (_twTimer) { clearTimeout(_twTimer); _twTimer = null; }
+  el.textContent = '';
+  let i = 0;
+  (function step() {
+    if (i < text.length) { el.textContent += text[i++]; _twTimer = setTimeout(step, speed); }
+  })();
+}
+
 // ─── Messages ─────────────────────────────────────────────────────────────────
 const OBSERVER_MESSAGES = [
   'Evangelion - Tsubasa wo Kudasai',
@@ -262,7 +273,10 @@ function drawDetectionOverlay() {
 
   // ── Bottom messages — updated via DOM ─────────────────────────────────────
   const newMsg = OBSERVER_MESSAGES[Math.min(poses.length, 3)];
-  if (msgObserver.textContent !== newMsg) msgObserver.textContent = newMsg;
+  if (msgObserver.dataset.target !== newMsg) {
+    msgObserver.dataset.target = newMsg;
+    typewrite(msgObserver, newMsg);
+  }
 
   // ── Face detection boxes ───────────────────────────────────────────────────
   smoothedBoxes = smoothedBoxes.slice(0, poses.length);
