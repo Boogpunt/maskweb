@@ -275,9 +275,9 @@ function drawDetectionOverlay() {
     ty += LH;
   }
 
-  statusRow('MASK',      maskLabel,          0.45, 0.9);
-  statusRow('VIDEO',     maskIsPlaying ? 'PLAYING' : 'IDLE', 0.45, maskIsPlaying ? 0.9 : 0.4);
-  statusRow('OBSERVERS', String(poses.length), 0.45, 0.9);
+  statusRow('mask',      maskLabel,          0.45, 0.9);
+  statusRow('video',     maskIsPlaying ? 'playing' : 'idle', 0.45, maskIsPlaying ? 0.9 : 0.4);
+  statusRow('observers', String(poses.length), 0.45, 0.9);
 
   const BAR_W = 80;
   const BAR_H = 3;
@@ -286,7 +286,7 @@ function drawDetectionOverlay() {
     const conf = fpts.length ? fpts.reduce((s, k) => s + k.confidence, 0) / fpts.length : 0;
 
     detectionCtx.fillStyle = `rgba(60,60,60,0.4)`;
-    detectionCtx.fillText(`  OBSERVER_${String(i + 1).padStart(2, '0')}`, TX, ty);
+    detectionCtx.fillText(`  observer_${String(i + 1).padStart(2, '0')}`, TX, ty);
 
     const barX = COL2;
     const barY = ty + (LH - BAR_H) / 2;
