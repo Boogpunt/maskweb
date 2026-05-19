@@ -207,6 +207,15 @@ function onPoses(results) {
   }
 }
 
+// ─── Video lazy loading ───────────────────────────────────────────────────────
+function preloadFrom(fromNum) {
+  [0, 1, 2, 3].filter(n => n !== fromNum).forEach(toNum => {
+    const tv = transVideos[`${fromNum}_${toNum}`];
+    if (tv && tv.readyState === 0) { tv.preload = 'auto'; tv.load(); }
+  });
+}
+preloadFrom(0);  // on startup, only load transitions from initial state
+
 // ─── Mask video control ───────────────────────────────────────────────────────
 function tryTransition(fromNum, toNum) {
   if (maskIsPlaying) return;
@@ -235,6 +244,7 @@ function tryTransition(fromNum, toNum) {
     activeElement  = tv;  // leave visible, paused at last frame
     currentMaskNum = toNum;
     maskIsPlaying  = false;
+    preloadFrom(toNum);  // preload next possible transitions
   }, { once: true });
 
   if (tv.currentTime === 0) {
