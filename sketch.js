@@ -208,7 +208,12 @@ function tryTransition(fromNum, toNum) {
   const startTrans = () => {
     if (activeElement && activeElement !== tv) activeElement.classList.remove('active');
     tv.classList.add('active');
-    tv.play().catch(() => {});
+    tv.play().catch(() => {
+      // play() rejected — restore previous visual state and unlock
+      tv.classList.remove('active');
+      if (activeElement) activeElement.classList.add('active');
+      maskIsPlaying = false;
+    });
 
     if (_textTimer) { clearTimeout(_textTimer); _textTimer = null; }
     _textTimer = setTimeout(() => updateBottomText(toNum), TEXT_DELAY_MS);
@@ -217,13 +222,20 @@ function tryTransition(fromNum, toNum) {
   tv.addEventListener('ended', () => {
     activeElement  = tv;  // leave visible, paused at last frame
     currentMaskNum = toNum;
-    maskIsPlaying = false;
+    maskIsPlaying  = false;
   }, { once: true });
 
   if (tv.currentTime === 0) {
     startTrans();
   } else {
-    tv.addEventListener('seeked', startTrans, { once: true });
+    // On iOS, 'seeked' can silently not fire — fall back after 1.5s
+    let seekTimer;
+    const onSeeked = () => { clearTimeout(seekTimer); startTrans(); };
+    tv.addEventListener('seeked', onSeeked, { once: true });
+    seekTimer = setTimeout(() => {
+      tv.removeEventListener('seeked', onSeeked);
+      startTrans();
+    }, 1500);
     tv.currentTime = 0;
   }
 }
