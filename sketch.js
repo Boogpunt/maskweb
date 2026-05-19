@@ -101,13 +101,12 @@ new p5(function (p) {
 });
 
 // ─── Typewriter ───────────────────────────────────────────────────────────────
-let _twTimer = null;
 function typewrite(el, text, speed = 38) {
-  if (_twTimer) { clearTimeout(_twTimer); _twTimer = null; }
+  if (el._tw) { clearTimeout(el._tw); }
   el.textContent = '';
   let i = 0;
   (function step() {
-    if (i < text.length) { el.textContent += text[i++]; _twTimer = setTimeout(step, speed); }
+    if (i < text.length) { el.textContent += text[i++]; el._tw = setTimeout(step, speed); }
   })();
 }
 
@@ -119,6 +118,8 @@ const OBSERVER_MESSAGES = [
   'Jai Paul - Jasmine (Demo)',
 ];
 const msgCombined       = document.getElementById('msg-combined');
+const zeroMsg           = document.getElementById('zero-msg');
+const bgLayer           = document.getElementById('bg-layer');
 let   _textTimer        = null;
 
 function updateBottomText(toNum) {
@@ -187,6 +188,17 @@ function onPoses(results) {
   } else {
     candidateCount = raw;
     stableFrames   = 1;
+  }
+
+  const isZero = poses.length === 0;
+  bgLayer.style.opacity = isZero ? '0' : '1';
+  if (isZero && zeroMsg.dataset.showing !== '1') {
+    zeroMsg.dataset.showing = '1';
+    zeroMsg.style.opacity = '1';
+    typewrite(zeroMsg, 'Then, Who are you when no one is watching', 60);
+  } else if (!isZero && zeroMsg.dataset.showing === '1') {
+    zeroMsg.dataset.showing = '0';
+    zeroMsg.style.opacity = '0';
   }
 
   if (stableFrames >= STABLE_FRAMES && raw !== currentMaskNum) {

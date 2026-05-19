@@ -10,12 +10,15 @@
 </head>
 <body>
 
-  <!-- Webcam — base layer behind video -->
+  <!-- Webcam — base layer, back -->
   <div id="webcam-container">
     <canvas id="webcam-canvas"></canvas>
   </div>
 
-  <!-- Fullscreen mask videos — overlay blend on top of webcam -->
+  <!-- Black background — sits above webcam -->
+  <div id="bg-layer"></div>
+
+  <!-- Fullscreen mask videos — blend on top of black background -->
   <div id="video-container">
 <video id="trans_1_2" class="mask-video" src="assets/videos/mask_1_2.mp4" preload="auto" muted playsinline></video>
     <video id="trans_1_3" class="mask-video" src="assets/videos/mask_1_3.mp4" preload="auto" muted playsinline></video>
@@ -34,11 +37,11 @@
   <!-- Detection overlay — bounding boxes -->
   <canvas id="detection-overlay"></canvas>
 
-  <!-- Top-center refresh button -->
-  <button id="refresh-btn" onclick="location.reload()">↺</button>
+  <!-- Observer-0 message -->
+  <div id="zero-msg">Then, Who are you when no one is watching</div>
 
-  <!-- Top-right title -->
-  <div id="title-text">WE ACT DIFFERENT UNDER OTHERS GAZE</div>
+  <!-- Top-right title — click to refresh -->
+  <div id="title-text" onclick="location.reload()">WE ACT DIFFERENT UNDER OTHERS GAZE</div>
 
   <!-- Bottom messages -->
   <div id="bottom-messages">
