@@ -5,6 +5,7 @@ const VIGNETTE_STRENGTH = 0.6;   // vignette edge darkening (0 = off, higher = s
 const DETECT_INTERVAL   = 6;     // run pose detection every N draw frames
 const STABLE_FRAMES     = 5;     // consecutive detections (× DETECT_INTERVAL frames) before triggering
 const BOX_SMOOTH        = 0.2;   // EMA factor for box position (lower = smoother)
+const TEXT_DELAY_MS     = 1500;  // ms after video starts before bottom text updates
 
 // ─── Dynamic webcam dimensions ────────────────────────────────────────────────
 let WEBCAM_W = Math.round(window.innerWidth  * WEBCAM_SCALE);
@@ -117,6 +118,17 @@ const OBSERVER_MESSAGES = [
   'Jai Paul - Jasmine (Demo)',
 ];
 const msgCombined       = document.getElementById('msg-combined');
+let   _textTimer        = null;
+
+function updateBottomText(toNum) {
+  const newMsg = OBSERVER_MESSAGES[toNum];
+  if (msgCombined.dataset.target === newMsg) return;
+  msgCombined.dataset.target = newMsg;
+  typewrite(msgCombined, "I would say i'm listening\n" + newMsg);
+}
+
+// Initialize on load with observer-0 message
+updateBottomText(0);
 
 // ─── Pose callback ────────────────────────────────────────────────────────────
 
@@ -172,6 +184,9 @@ function tryTransition(fromNum, toNum) {
     if (activeElement && activeElement !== tv) activeElement.classList.remove('active');
     tv.classList.add('active');
     tv.play().catch(() => {});
+
+    if (_textTimer) { clearTimeout(_textTimer); _textTimer = null; }
+    _textTimer = setTimeout(() => updateBottomText(toNum), TEXT_DELAY_MS);
   };
 
   tv.addEventListener('ended', () => {
@@ -270,13 +285,6 @@ function drawDetectionOverlay() {
     const pct  = Math.round(conf * 100);
     statusRow(`  observer_${String(i + 1).padStart(2, '0')}`, `${pct} %`, 0.4, 0.85);
   });
-
-  // ── Bottom messages — updated via DOM ─────────────────────────────────────
-  const newMsg = OBSERVER_MESSAGES[Math.min(poses.length, 3)];
-  if (msgCombined.dataset.target !== newMsg) {
-    msgCombined.dataset.target = newMsg;
-    typewrite(msgCombined, "I would say i'm listening\n" + newMsg);
-  }
 
   // ── Face detection boxes ───────────────────────────────────────────────────
   smoothedBoxes = smoothedBoxes.slice(0, poses.length);
