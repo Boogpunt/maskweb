@@ -75,6 +75,20 @@ body {
   pointer-events: none;
 }
 
+/* Top-right title */
+#title-text {
+  position: fixed;
+  top: 22px;
+  right: 22px;
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(60, 60, 60, 0.7);
+  z-index: 30;
+  pointer-events: none;
+  text-align: right;
+}
+
 /* Bottom messages */
 #bottom-messages {
   position: fixed;
