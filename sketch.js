@@ -18,7 +18,6 @@ let poses = [];
 let currentMaskNum    = 0;     // 0 = blank, 1-3 = mask state
 let maskIsPlaying     = false;
 let activeElement     = null;  // currently visible video, paused at last frame
-let textLog           = [];    // accumulated message log (newest last)
 
 let candidateCount    = -1;   // raw count currently being observed
 let stableFrames      = 0;    // consecutive detections candidateCount has held
@@ -99,12 +98,11 @@ new p5(function (p) {
 
 });
 
+// ─── Messages ─────────────────────────────────────────────────────────────────
+const STATIC_MESSAGE    = "I would say i'm listening";
+const OBSERVER_MESSAGES = ['Music 0', 'Music 1', 'Music 2', 'Music 3'];
+
 // ─── Pose callback ────────────────────────────────────────────────────────────
-const MASK_TEXTS = [
-  { heading: "When I'm with my close friend",            desc: "I can show my negative aspects to them. Keep blaming world." },
-  { heading: "When I'm with my business client",         desc: "I try to show me as a professional person. Be smart, act like a person who have a vision." },
-  { heading: "When I'm surrounded with lots of people",  desc: "I have to show me as a positive person. Keep listening what people said and let them do it" },
-];
 
 function deduplicatePoses(results) {
   // Sort highest-confidence first, then drop any pose whose nose is too close to an already-kept one
@@ -163,7 +161,6 @@ function tryTransition(fromNum, toNum) {
   tv.addEventListener('ended', () => {
     activeElement  = tv;  // leave visible, paused at last frame
     currentMaskNum = toNum;
-    if (toNum > 0) addTextLogEntry(toNum - 1);
     maskIsPlaying = false;
   }, { once: true });
 
@@ -173,12 +170,6 @@ function tryTransition(fromNum, toNum) {
     tv.addEventListener('seeked', startTrans, { once: true });
     tv.currentTime = 0;
   }
-}
-
-function addTextLogEntry(maskIndex) {
-  const t = MASK_TEXTS[maskIndex % MASK_TEXTS.length];
-  textLog.push({ num: String(textLog.length + 1).padStart(2, '0'), heading: t.heading, desc: t.desc });
-  if (textLog.length > 5) textLog = textLog.slice(-5);
 }
 
 // ─── Webcam preview draw — grayscale invert + vignette ───────────────────────
@@ -264,28 +255,23 @@ function drawDetectionOverlay() {
     statusRow(`  observer_${String(i + 1).padStart(2, '0')}`, `${pct} %`, 0.4, 0.85);
   });
 
-  // ── Bottom-left text log ───────────────────────────────────────────────────
-  if (textLog.length > 0) {
-    const LX        = PAD + 2;
-    const LOG_BOT   = H - PAD - 4;
-    const ELH       = 15;
-    const ENTRY_GAP = 10;
-    const OPACITIES = [1.0, 0.42, 0.18, 0.08, 0.04];
+  // ── Bottom messages ────────────────────────────────────────────────────────
+  const MSG_FS  = FS * 2;        // 24px
+  const MSG_PAD = PAD * 2;       // 40px margin from edges
+  const MSG_GAP = MSG_FS * 0.6;  // gap between the two lines
 
-    detectionCtx.textAlign    = 'left';
-    detectionCtx.textBaseline = 'bottom';
+  detectionCtx.font      = `400 ${MSG_FS}px 'Chakra Petch', sans-serif`;
+  detectionCtx.textAlign    = 'left';
+  detectionCtx.textBaseline = 'bottom';
 
-    for (let age = 0; age < textLog.length; age++) {
-      const e   = textLog[textLog.length - 1 - age];
-      const op  = OPACITIES[age] ?? 0.03;
-      const bot = LOG_BOT - age * (ELH * 2 + 3 + ENTRY_GAP);
+  // Static line at bottom
+  detectionCtx.fillStyle = `rgba(60,60,60,0.9)`;
+  detectionCtx.fillText(STATIC_MESSAGE, MSG_PAD, H - MSG_PAD);
 
-      detectionCtx.font      = `400 ${FS}px 'Chakra Petch', sans-serif`;
-      detectionCtx.fillStyle = `rgba(60,60,60,${op})`;
-      detectionCtx.fillText(`  ${e.desc}`, LX, bot);
-      detectionCtx.fillText(`[${e.num}] ${e.heading}`, LX, bot - ELH - 2);
-    }
-  }
+  // Observer-count message above static line
+  const observerMsg = OBSERVER_MESSAGES[Math.min(poses.length, 3)];
+  detectionCtx.fillStyle = `rgba(60,60,60,0.55)`;
+  detectionCtx.fillText(observerMsg, MSG_PAD, H - MSG_PAD - MSG_FS - MSG_GAP);
 
   // ── Face detection boxes ───────────────────────────────────────────────────
   smoothedBoxes = smoothedBoxes.slice(0, poses.length);
