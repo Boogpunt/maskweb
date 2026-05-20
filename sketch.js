@@ -237,18 +237,32 @@ function tryTransition(fromNum, toNum) {
 
   tv.playbackRate = PLAYBACK_RATE;
 
-  const startTrans = () => {
-    if (activeElement && activeElement !== tv) activeElement.classList.remove('active');
-    tv.classList.add('active');
+  const doPlay = () => {
     tv.play().catch(() => {
-      // play() rejected — restore previous visual state and unlock
       tv.classList.remove('active');
       if (activeElement) activeElement.classList.add('active');
       maskIsPlaying = false;
     });
-
     if (_textTimer) { clearTimeout(_textTimer); _textTimer = null; }
     _textTimer = setTimeout(() => updateBottomText(toNum), TEXT_DELAY_MS);
+  };
+
+  const startTrans = () => {
+    if (activeElement && activeElement !== tv) activeElement.classList.remove('active');
+    tv.classList.add('active');
+
+    if (tv.readyState >= 3) {
+      doPlay();
+    } else {
+      // Video not buffered yet (common on iOS with preload=none) — load first
+      tv.load();
+      let canplayTimer = setTimeout(() => {
+        tv.removeEventListener('canplay', onCanPlay);
+        doPlay();
+      }, 4000);
+      const onCanPlay = () => { clearTimeout(canplayTimer); doPlay(); };
+      tv.addEventListener('canplay', onCanPlay, { once: true });
+    }
   };
 
   tv.addEventListener('ended', () => {
