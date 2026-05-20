@@ -127,7 +127,7 @@ function updateBottomText(toNum) {
   const newMsg = OBSERVER_MESSAGES[toNum];
   if (msgCombined.dataset.target === newMsg) return;
   msgCombined.dataset.target = newMsg;
-  typewrite(msgCombined, newMsg);
+  typewrite(msgCombined, "I would say i'm listening\n" + newMsg);
 }
 
 // Initialize on load with observer-0 message
@@ -192,7 +192,8 @@ function onPoses(results) {
   }
 
   const isZero = poses.length === 0;
-  bgLayer.style.opacity = isZero ? '0' : '1';
+  bgLayer.style.opacity    = isZero ? '0' : '1';
+  msgCombined.style.opacity = isZero ? '0' : '1';
   if (isZero && zeroMsg.dataset.showing !== '1') {
     zeroMsg.dataset.showing = '1';
     if (!_zeroTimer) {

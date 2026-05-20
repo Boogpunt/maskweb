@@ -139,6 +139,7 @@ body {
 }
 
 #msg-combined {
+  transition: opacity 0.6s ease;
   font-family: 'Chakra Petch', sans-serif;
   font-size: 14px;
   font-weight: 400;
