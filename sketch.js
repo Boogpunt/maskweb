@@ -121,12 +121,13 @@ const msgCombined       = document.getElementById('msg-combined');
 const zeroMsg           = document.getElementById('zero-msg');
 const bgLayer           = document.getElementById('bg-layer');
 let   _textTimer        = null;
+let   _zeroTimer        = null;
 
 function updateBottomText(toNum) {
   const newMsg = OBSERVER_MESSAGES[toNum];
   if (msgCombined.dataset.target === newMsg) return;
   msgCombined.dataset.target = newMsg;
-  typewrite(msgCombined, "I would say i'm listening\n" + newMsg);
+  typewrite(msgCombined, newMsg);
 }
 
 // Initialize on load with observer-0 message
@@ -194,10 +195,16 @@ function onPoses(results) {
   bgLayer.style.opacity = isZero ? '0' : '1';
   if (isZero && zeroMsg.dataset.showing !== '1') {
     zeroMsg.dataset.showing = '1';
-    zeroMsg.style.opacity = '1';
-    typewrite(zeroMsg, 'Then, Who are you when no one is watching', 60);
+    if (!_zeroTimer) {
+      _zeroTimer = setTimeout(() => {
+        _zeroTimer = null;
+        zeroMsg.style.opacity = '1';
+        typewrite(zeroMsg, 'Then, Who are you when no one is watching', 60);
+      }, 1000);
+    }
   } else if (!isZero && zeroMsg.dataset.showing === '1') {
     zeroMsg.dataset.showing = '0';
+    if (_zeroTimer) { clearTimeout(_zeroTimer); _zeroTimer = null; }
     zeroMsg.style.opacity = '0';
   }
 
