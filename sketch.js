@@ -3,9 +3,10 @@ const WEBCAM_SCALE      = 0.6;   // processing resolution as fraction of screen 
 const PLAYBACK_RATE     = 1.0;   // video speed (0.5 = half, 2.0 = double)
 const VIGNETTE_STRENGTH = 0.6;   // vignette edge darkening (0 = off, higher = stronger)
 const DETECT_INTERVAL   = 6;     // run pose detection every N draw frames
-const STABLE_FRAMES     = 5;     // consecutive detections (× DETECT_INTERVAL frames) before triggering
+const STABLE_FRAMES     = 10;    // consecutive detections (× DETECT_INTERVAL frames) before triggering
 const BOX_SMOOTH        = 0.2;   // EMA factor for box position (lower = smoother)
 const TEXT_DELAY_MS     = 1500;  // ms after video starts before bottom text updates
+const COOLDOWN_MS       = 2500;  // ms after transition ends before next can trigger
 
 // ─── Dynamic webcam dimensions ────────────────────────────────────────────────
 let WEBCAM_W = Math.round(window.innerWidth  * WEBCAM_SCALE);
@@ -27,6 +28,7 @@ let detectReady       = true;
 let framesSinceDetect = 0;
 let smoothedBoxes     = [];   // per-observer EMA-smoothed { bx, by, bw, bh }
 let trackedPoses      = [];   // previous-frame poses used for stable ordering
+let lastTransitionEnd = 0;    // timestamp when last transition video ended
 
 const transVideos = {};
 [[1,2],[1,3],[2,1],[2,3],[3,1],[3,2],[1,0],[2,0],[3,0],[0,1],[0,2],[0,3]].forEach(([f,t]) => {
@@ -69,7 +71,7 @@ new p5(function (p) {
     capture.size(WEBCAM_W, WEBCAM_H);
     capture.hide();
 
-    bodyPose = ml5.bodyPose('MoveNet', { flipped: false, minPoseScore: 0.4 }, () => {
+    bodyPose = ml5.bodyPose('MoveNet', { flipped: false, minPoseScore: 0.5 }, () => {
       modelReady = true;
     });
   };
@@ -209,8 +211,9 @@ function onPoses(results) {
     zeroMsg.style.opacity = '0';
   }
 
-  if (stableFrames >= STABLE_FRAMES && raw !== currentMaskNum) {
-    stableFrames = 0;  // reset so we don't spam tryTransition while maskIsPlaying blocks
+  const cooledDown = (Date.now() - lastTransitionEnd) >= COOLDOWN_MS;
+  if (stableFrames >= STABLE_FRAMES && raw !== currentMaskNum && cooledDown) {
+    stableFrames = 0;
     tryTransition(currentMaskNum, raw);
   }
 }
@@ -249,9 +252,10 @@ function tryTransition(fromNum, toNum) {
   };
 
   tv.addEventListener('ended', () => {
-    activeElement  = tv;  // leave visible, paused at last frame
-    currentMaskNum = toNum;
-    maskIsPlaying  = false;
+    activeElement     = tv;  // leave visible, paused at last frame
+    currentMaskNum    = toNum;
+    maskIsPlaying     = false;
+    lastTransitionEnd = Date.now();
     preloadFrom(toNum);  // preload next possible transitions
   }, { once: true });
 
