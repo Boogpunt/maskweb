@@ -71,7 +71,7 @@ new p5(function (p) {
     capture.size(WEBCAM_W, WEBCAM_H);
     capture.hide();
 
-    bodyPose = ml5.bodyPose('MoveNet', { flipped: false, minPoseScore: 0.5 }, () => {
+    bodyPose = ml5.bodyPose('MoveNet', { flipped: false, minPoseScore: 0.3 }, () => {
       modelReady = true;
     });
   };

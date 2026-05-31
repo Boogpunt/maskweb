@@ -93,17 +93,18 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-family: 'Chakra Petch', sans-serif;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: 36px;
-  font-weight: 400;
-  color: rgba(60, 60, 60, 0.9);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 1.0);
   text-align: center;
   z-index: 26;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.8s ease;
   width: 80vw;
-  line-height: 1.4;
+  line-height: 1.12;
 }
 
 /* Top-right title — click to refresh */
@@ -117,11 +118,6 @@ body {
   color: rgba(60, 60, 60, 0.9);
   z-index: 30;
   text-align: right;
-  cursor: pointer;
-}
-
-#title-text:hover {
-  color: rgba(60, 60, 60, 0.5);
 }
 
 /* Bottom messages */

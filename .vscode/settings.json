@@ -1,0 +1,10 @@
+{
+  "liveServer.settings.ignoreFiles": [
+    "**/.DS_Store",
+    "**/.git/**",
+    "**/.claude/**",
+    "assets/videos/**",
+    "assets/images/**",
+    "assets/Chakra_Petch/**"
+  ]
+}
