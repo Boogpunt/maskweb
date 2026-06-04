@@ -1,7 +1,6 @@
 // ─── Config ───────────────────────────────────────────────────────────────────
 const WEBCAM_SCALE      = 0.6;   // processing resolution as fraction of screen (CSS stretches to fullscreen)
 const PLAYBACK_RATE     = 1.0;   // video speed (0.5 = half, 2.0 = double)
-const VIGNETTE_STRENGTH = 0.6;   // vignette edge darkening (0 = off, higher = stronger)
 const DETECT_INTERVAL   = 6;     // run pose detection every N draw frames
 const STABLE_FRAMES     = 10;    // consecutive detections (× DETECT_INTERVAL frames) before triggering
 const BOX_SMOOTH        = 0.2;   // EMA factor for box position (lower = smoother)
@@ -41,7 +40,7 @@ const detectionCanvas    = document.getElementById('detection-overlay');
 const detectionCtx       = detectionCanvas.getContext('2d');
 
 const offscreen = document.createElement('canvas');
-const offCtx    = offscreen.getContext('2d', { willReadFrequently: true });
+const offCtx    = offscreen.getContext('2d');
 
 function applyCanvasSize() {
   const dpr = window.devicePixelRatio || 1;
@@ -71,7 +70,7 @@ new p5(function (p) {
     capture.size(WEBCAM_W, WEBCAM_H);
     capture.hide();
 
-    bodyPose = ml5.bodyPose('MoveNet', { flipped: false, minPoseScore: 0.3 }, () => {
+    bodyPose = ml5.bodyPose('MoveNet', { modelType: 'MULTIPOSE_LIGHTNING', flipped: false, minPoseScore: 0.3 }, () => {
       modelReady = true;
     });
   };
@@ -288,11 +287,11 @@ function tryTransition(fromNum, toNum) {
   }
 }
 
-// ─── Webcam preview draw — grayscale invert + vignette ───────────────────────
+// ─── Webcam preview draw ──────────────────────────────────────────────────────
 function drawWebcamPreview() {
   if (!capture || !capture.elt) return;
 
-  // Draw mirrored frame to offscreen — cover crop to preserve aspect ratio
+  // Mirror + cover-crop to offscreen (used by ml5); copy raw to webcamCanvas (CSS handles grayscale + vignette)
   const srcW = capture.elt.videoWidth  || WEBCAM_W;
   const srcH = capture.elt.videoHeight || WEBCAM_H;
   const srcAspect = srcW / srcH;
@@ -308,24 +307,7 @@ function drawWebcamPreview() {
   offCtx.drawImage(capture.elt, sx, sy, sw, sh, -WEBCAM_W, 0, WEBCAM_W, WEBCAM_H);
   offCtx.restore();
 
-  const id = offCtx.getImageData(0, 0, WEBCAM_W, WEBCAM_H);
-  const px = id.data;
-  const cx = WEBCAM_W / 2;
-  const cy = WEBCAM_H / 2;
-
-  for (let i = 0; i < px.length; i += 4) {
-    const g = (px[i] * 0.299 + px[i + 1] * 0.587 + px[i + 2] * 0.114) | 0;
-
-    const idx = i >> 2;
-    const dx = ((idx % WEBCAM_W) - cx) / cx;
-    const dy = ((idx / WEBCAM_W | 0) - cy) / cy;
-    const vignette = Math.max(0, 1 - (dx * dx + dy * dy) * VIGNETTE_STRENGTH);
-    const gv = (g * vignette) | 0;
-
-    px[i] = px[i + 1] = px[i + 2] = gv;
-  }
-
-  webcamCtx.putImageData(id, 0, 0);
+  webcamCtx.drawImage(offscreen, 0, 0);
 }
 
 // ─── Detection overlay — HUD design ──────────────────────────────────────────
