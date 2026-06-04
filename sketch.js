@@ -2,10 +2,10 @@
 const WEBCAM_SCALE      = 0.6;   // processing resolution as fraction of screen (CSS stretches to fullscreen)
 const PLAYBACK_RATE     = 1.0;   // video speed (0.5 = half, 2.0 = double)
 const DETECT_INTERVAL   = 6;     // run pose detection every N draw frames
-const STABLE_FRAMES     = 10;    // consecutive detections (× DETECT_INTERVAL frames) before triggering
+const STABLE_FRAMES     = 6;     // consecutive detections (× DETECT_INTERVAL frames) before triggering
 const BOX_SMOOTH        = 0.2;   // EMA factor for box position (lower = smoother)
 const TEXT_DELAY_MS     = 1500;  // ms after video starts before bottom text updates
-const COOLDOWN_MS       = 2500;  // ms after transition ends before next can trigger
+const COOLDOWN_MS       = 1500;  // ms after transition ends before next can trigger
 
 // ─── Dynamic webcam dimensions ────────────────────────────────────────────────
 let WEBCAM_W = Math.round(window.innerWidth  * WEBCAM_SCALE);
@@ -201,7 +201,7 @@ function onPoses(results) {
       _zeroTimer = setTimeout(() => {
         _zeroTimer = null;
         zeroMsg.style.opacity = '1';
-        typewrite(zeroMsg, 'Then, Who are you when no one is watching', 60);
+        typewrite(zeroMsg, 'Then, Who are you when no one is watching', 30);
       }, 1000);
     }
   } else if (!isZero && zeroMsg.dataset.showing === '1') {
