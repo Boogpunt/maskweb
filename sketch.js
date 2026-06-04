@@ -70,7 +70,7 @@ new p5(function (p) {
     capture.size(WEBCAM_W, WEBCAM_H);
     capture.hide();
 
-    bodyPose = ml5.bodyPose('MoveNet', { modelType: 'MULTIPOSE_LIGHTNING', flipped: false, minPoseScore: 0.3 }, () => {
+    bodyPose = ml5.bodyPose('MoveNet', { modelType: 'MULTIPOSE_LIGHTNING', flipped: false, minPoseScore: 0.2 }, () => {
       modelReady = true;
     });
   };
@@ -138,7 +138,7 @@ updateBottomText(0);
 
 function deduplicatePoses(results) {
   // Sort highest-confidence first, then drop any pose whose nose is too close to an already-kept one
-  const MIN_DIST = Math.min(WEBCAM_W, WEBCAM_H) * 0.3;
+  const MIN_DIST = Math.min(WEBCAM_W, WEBCAM_H) * 0.15;
   const sorted = [...results].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
   const kept = [];
   for (const pose of sorted) {
