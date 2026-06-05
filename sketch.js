@@ -202,6 +202,7 @@ function onPoses(results) {
         _zeroTimer = null;
         zeroMsg.style.opacity = '1';
         typewrite(zeroMsg, 'Then, Who are you when no one is watching', 30);
+        if (currentMaskNum !== 0 && !maskIsPlaying) tryTransition(currentMaskNum, 0);
       }, 1000);
     }
   } else if (!isZero && zeroMsg.dataset.showing === '1') {
@@ -211,7 +212,7 @@ function onPoses(results) {
   }
 
   const cooledDown = (Date.now() - lastTransitionEnd) >= COOLDOWN_MS;
-  if (stableFrames >= STABLE_FRAMES && raw !== currentMaskNum && cooledDown) {
+  if (stableFrames >= STABLE_FRAMES && raw !== currentMaskNum && raw !== 0 && cooledDown) {
     stableFrames = 0;
     tryTransition(currentMaskNum, raw);
   }
