@@ -144,8 +144,8 @@ body {
 #msg-combined {
   transition: opacity 0.6s ease;
   font-family: 'Chakra Petch', sans-serif;
-  font-size: 56px;
-  font-weight: 400;
+  font-size: 28px;
+  font-weight: 700;
   color: rgba(60, 60, 60, 0.9);
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(12px);
