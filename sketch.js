@@ -4,7 +4,6 @@ const PLAYBACK_RATE     = 1.0;   // video speed (0.5 = half, 2.0 = double)
 const DETECT_INTERVAL   = 6;     // run pose detection every N draw frames
 const STABLE_FRAMES     = 6;     // consecutive detections (× DETECT_INTERVAL frames) before triggering
 const BOX_SMOOTH        = 0.2;   // EMA factor for box position (lower = smoother)
-const TEXT_DELAY_MS     = 1500;  // ms after video starts before bottom text updates
 const COOLDOWN_MS       = 1500;  // ms after transition ends before next can trigger
 
 // ─── Dynamic webcam dimensions ────────────────────────────────────────────────
@@ -112,27 +111,46 @@ function typewrite(el, text, speed = 38) {
 }
 
 // ─── Messages ─────────────────────────────────────────────────────────────────
-const OBSERVER_MESSAGES = [
-  'Evangelion - Tsubasa wo Kudasai',
-  'Franco Micalizzi: Stridulum - Sadness Theme',
-  'Fred again.. feat. The Blessed Madonna - Marea',
-  'Jai Paul - Jasmine (Demo)',
-];
-const msgCombined       = document.getElementById('msg-combined');
-const zeroMsg           = document.getElementById('zero-msg');
-const bgLayer           = document.getElementById('bg-layer');
-let   _textTimer        = null;
-let   _zeroTimer        = null;
+const msgCombined = document.getElementById('msg-combined');
+const zeroMsg     = document.getElementById('zero-msg');
+const bgLayer     = document.getElementById('bg-layer');
+let   _zeroTimer  = null;
 
-function updateBottomText(toNum) {
-  const newMsg = OBSERVER_MESSAGES[toNum];
-  if (msgCombined.dataset.target === newMsg) return;
-  msgCombined.dataset.target = newMsg;
-  typewrite(msgCombined, "I would say i'm listening\n" + newMsg);
+const DEFAULT_BOTTOM_TEXT = 'SCAN BARCODE\nBETWEEN PAST AND FUTURE TRIANGLE';
+const BARCODE_RESET_MS    = 5000;
+const BARCODE_TIMEOUT_MS  = 100;
+
+let _barcodeBuffer      = '';
+let _barcodeCharTimer   = null;
+let _barcodeResetTimer  = null;
+
+function showScannedText(text) {
+  if (_barcodeResetTimer) { clearTimeout(_barcodeResetTimer); _barcodeResetTimer = null; }
+  typewrite(msgCombined, text);
+  _barcodeResetTimer = setTimeout(() => {
+    _barcodeResetTimer = null;
+    typewrite(msgCombined, DEFAULT_BOTTOM_TEXT);
+  }, BARCODE_RESET_MS);
 }
 
-// Initialize on load with observer-0 message
-updateBottomText(0);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const scanned = _barcodeBuffer.trim().toUpperCase();
+    _barcodeBuffer = '';
+    if (_barcodeCharTimer) { clearTimeout(_barcodeCharTimer); _barcodeCharTimer = null; }
+    if (scanned) showScannedText(scanned);
+  } else if (e.key.length === 1) {
+    _barcodeBuffer += e.key;
+    if (_barcodeCharTimer) clearTimeout(_barcodeCharTimer);
+    _barcodeCharTimer = setTimeout(() => {
+      _barcodeBuffer = '';
+      _barcodeCharTimer = null;
+    }, BARCODE_TIMEOUT_MS);
+  }
+});
+
+// Initialize with default text
+typewrite(msgCombined, DEFAULT_BOTTOM_TEXT);
 
 // ─── Pose callback ────────────────────────────────────────────────────────────
 
@@ -193,8 +211,7 @@ function onPoses(results) {
   }
 
   const isZero = poses.length === 0;
-  bgLayer.style.opacity    = isZero ? '0' : '1';
-  msgCombined.style.opacity = isZero ? '0' : '1';
+  bgLayer.style.opacity = isZero ? '0' : '1';
   if (isZero && zeroMsg.dataset.showing !== '1') {
     zeroMsg.dataset.showing = '1';
     if (!_zeroTimer) {
@@ -243,8 +260,6 @@ function tryTransition(fromNum, toNum) {
       if (activeElement) activeElement.classList.add('active');
       maskIsPlaying = false;
     });
-    if (_textTimer) { clearTimeout(_textTimer); _textTimer = null; }
-    _textTimer = setTimeout(() => updateBottomText(toNum), TEXT_DELAY_MS);
   };
 
   const startTrans = () => {

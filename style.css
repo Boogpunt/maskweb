@@ -144,17 +144,17 @@ body {
 #msg-combined {
   transition: opacity 0.6s ease;
   font-family: 'Chakra Petch', sans-serif;
-  font-size: 14px;
+  font-size: 56px;
   font-weight: 400;
   color: rgba(60, 60, 60, 0.9);
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: 8px;
-  padding: 12px 28px;
+  padding: 24px 48px;
   white-space: pre-line;
   text-align: center;
-  line-height: 1.7;
+  line-height: 1.3;
   box-shadow:
     0 1px 2px  rgba(0, 0, 0, 0.06),
     0 3px 8px  rgba(0, 0, 0, 0.10),
