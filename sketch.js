@@ -126,7 +126,7 @@ let _barcodeResetTimer  = null;
 
 function showScannedText(text) {
   if (_barcodeResetTimer) { clearTimeout(_barcodeResetTimer); _barcodeResetTimer = null; }
-  typewrite(msgCombined, text);
+  typewrite(msgCombined, "I'm sometimes, Act like\n" + text);
   _barcodeResetTimer = setTimeout(() => {
     _barcodeResetTimer = null;
     typewrite(msgCombined, DEFAULT_BOTTOM_TEXT);
